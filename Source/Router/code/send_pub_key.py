@@ -30,7 +30,7 @@ def send_key():
     s.sendall(msg.encode())
     s.close()
 
-    print("[ROUTEUR] Clé publique envoyée au master.")
+    print("[" + ROUTER_NAME + "] Clé publique envoyée au master.")
 
 if __name__ == "__main__":
     send_key()
