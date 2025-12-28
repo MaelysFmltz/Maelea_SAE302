@@ -17,7 +17,6 @@ DB_NAME = input("DB name : ")
 
 LOG_FILE = "../logs/master.log"
 
-
 def log(msg):
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_FILE, "a") as f:

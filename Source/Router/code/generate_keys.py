@@ -15,3 +15,4 @@ open(KEY_PATH + "private.key", "wb").write(private_key)
 open(KEY_PATH + "public.key", "wb").write(public_key)
 
 print("[ROUTEUR] Clés générées")
+

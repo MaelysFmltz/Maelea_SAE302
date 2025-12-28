@@ -20,7 +20,6 @@ def xor_bytes(data, key):
 with open("../keys/public.key", "rb") as f:
     CLIENT_PUBKEY = f.read()
 
-
 def register_client():
     msg = (
         "CLIENT " + CLIENT_NAME + " " +
