@@ -1,68 +1,98 @@
 import socket
 import threading
 
-ROUTER_NAME = input("Nom du routeur (ex: R1) : ")
-LISTEN_PORT = int(input("Port d'écoute du routeur : "))
+ROUTER_NAME = input("Nom du routeur : ")
+LISTEN_PORT = int(input("Port d'écoute : "))
 
-KEY_PATH = "../keys/"
-PRIVATE_KEY_FILE = KEY_PATH + "private.key"
-
-def xor_bytes(data, key):
-    result = bytearray()
-    for i in range(len(data)):
-        result.append(data[i] ^ key[i % len(key)])
-    return bytes(result)
-
-with open(PRIVATE_KEY_FILE, "rb") as f:
+with open("../keys/private.key", "rb") as f:
     private_key = f.read()
 
+def xor_bytes(data, key):
+    return bytes(data[i] ^ key[i % len(key)] for i in range(len(data)))
+
 def handle_client(conn, addr):
-    try:
-        encrypted = conn.recv(65536)
-        if not encrypted:
-            return
+    encrypted = conn.recv(65536)
+    decrypted = xor_bytes(encrypted, private_key)
+    text = decrypted.decode(errors="ignore")
 
-        decrypted = xor_bytes(encrypted, private_key)
-        text = decrypted.decode(errors="ignore")
+    header, payload = text.split("\n", 1)
 
-        if "\n" in text:
-            header, payload = text.split("\n", 1)
-        else:
-            header = text
-            payload = ""
+    if header.startswith("NEXT"):
+        _, ip, port = header.split(" ")
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((ip, int(port)))
+        s.sendall(payload.encode())
+        s.close()
 
-        if header.startswith("NEXT"):
-            parts = header.split(" ")
-            next_ip = parts[1]
-            next_port = int(parts[2])
+    elif header.startswith("FINAL"):
+        _, ip, port = header.split(" ")
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((ip, int(port)))
+        s.sendall(payload.encode())
+        s.close()
 
-            print("[" + ROUTER_NAME + "] Transfert vers " + next_ip + ":" + str(next_port))
+    conn.close()
 
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((next_ip, next_port))
-            s.sendall(payload.encode())
-            s.close()
-        else:
-            print("\n===== MESSAGE FINAL =====")
-            print(payload)
-            print("=========================\n")
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(("0.0.0.0", LISTEN_PORT))
+s.listen(5)
+print(f"[{ROUTER_NAME}] En écoute sur {LISTEN_PORT}")
 
-    except Exception as e:
-        print("[" + ROUTER_NAME + "] Erreur :", e)
-    finally:
-        conn.close()
+while True:
+    c, a = s.accept()
+    threading.Thread(target=handle_client, args=(c, a), daemon=True).start()
 
-def start_router():
-    print("[" + ROUTER_NAME + "] En écoute sur le port " + str(LISTEN_PORT))
 
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(("0.0.0.0", LISTEN_PORT))
-    server.listen(5)
 
-    while True:
-        conn, addr = server.accept()
-        t = threading.Thread(target=handle_client, args=(conn, addr))
-        t.start()
+# 4) Création du générateur de clés
+cat > generate_keys.py
+import random
 
-if __name__ == "__main__":
-    start_router()
+KEY_PATH = "../keys/"
+
+def generate_key():
+    key = bytearray()
+    for _ in range(32):
+        key.append(random.randint(0, 255))
+    return bytes(key)
+
+private_key = generate_key()
+public_key = bytes([b ^ 0xAA for b in private_key])
+
+open(KEY_PATH + "private.key", "wb").write(private_key)
+open(KEY_PATH + "public.key", "wb").write(public_key)
+
+print("[ROUTEUR] Clés générées")
+
+
+
+
+# 5) Création de l’envoi de clé publique
+cat > send_pub_key.pyimport socket
+
+ROUTER_NAME = input("Nom du routeur : ")
+ROUTER_IP = input("IP du routeur : ")
+ROUTER_PORT = input("Port du routeur : ")
+
+MASTER_IP = input("IP du master : ")
+MASTER_PORT = int(input("Port du master : "))
+
+with open("../keys/public.key", "rb") as f:
+    pubkey = f.read().hex()
+
+msg = (
+    f"ROUTEUR {ROUTER_NAME}\n"
+    f"IP {ROUTER_IP}\n"
+    f"PORT {ROUTER_PORT}\n"
+    "PUBKEY\n"
+    f"{pubkey}\n"
+    "END\n"
+)
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((MASTER_IP, MASTER_PORT))
+s.sendall(msg.encode())
+s.close()
+
+print("[ROUTEUR] Clé publique envoyée")
+
