@@ -44,31 +44,23 @@ Librairies interdites (non utilisées) : json, cryptography, toute librairie de 
 
 4. Structure du projet
 
-Maelea_SAE302/
-│
-├── Source/
-│   ├── Master/
-│   │   ├── code/
-│   │   │   └── server_master.py
-│   │   └── logs/
-│   │
-│   ├── Router/
-│   │   ├── code/
-│   │   │   ├── router.py
-│   │   │   ├── generate_keys.py
-│   │   │   └── send_pub_key.py
-│   │   └── keys/
-│   │
-│   └── Client/
-│       ├── code/
-│       │   ├── client.py
-│       │   └── generate_keys.py
-│       └── keys/
-│
-├── database/
-│   └── schema.sql
-│
-└── README.md
+Le dossier Master regroupe le programme principal du réseau.
+Il contient le script server_master.py, qui gère l’enregistrement des routeurs et des clients, stocke les informations dans la base de données MariaDB et fournit la liste des routeurs aux clients.
+Un sous-dossier logs est présent afin de conserver les journaux d’exécution du Master (connexions, erreurs, événements).
+
+Le dossier Router contient le code des routeurs virtuels.
+Chaque routeur dispose d’un script principal (router.py) qui reçoit les messages, enlève une couche de chiffrement et les transmet au prochain nœud.
+Un script de génération de clés (generate_keys.py) permet de créer la paire de clés du routeur, et un script (send_pub_key.py) est utilisé pour envoyer la clé publique au Master.
+Les clés du routeur sont stockées dans un dossier keys.
+
+Le dossier Client contient l’application client.
+Le script client.py correspond à l’interface graphique Qt permettant à un utilisateur d’envoyer et de recevoir des messages anonymisés.
+Un script de génération de clés est également présent afin de créer les clés du client.
+Les clés sont stockées dans le dossier keys.
+
+Enfin, le dossier database contient le fichier schema.sql, qui permet de créer la base de données MariaDB ainsi que les tables nécessaires au fonctionnement du projet.
+
+Le fichier README.md regroupe l’ensemble de la documentation du projet : présentation, installation, utilisation, choix techniques et explication du fonctionnement.
 
 5. Base de données MariaDB
 
@@ -102,7 +94,7 @@ Limites :
 7. Installation et utilisation du projet (pas à pas)
 
 Cette section décrit l’installation complète et l’utilisation du projet, dans l’ordre logique de fonctionnement du système.
-Il suffit de suivre les étapes dans l’ordre, sans connaissances particulières.
+Il suffit de suivre les étapes dans l’ordre, sans connaissances particulières. Les VMs devront être sur le même réseau en Réseau privé hôte.
 
 7.1 Récupération du projet depuis GitHub
 
@@ -111,10 +103,20 @@ Installation de Git :
 	sudo apt update
 	sudo apt install git -y
 
+ou si problème :
+	
+	su -
+	apt update
+	usermod -aG sudo (user)
+	reboot
+
 Cloner le projet :
 
 	git clone https://github.com/VOTRE_PSEUDO/Maelea_SAE302.git
 	cd Maelea_SAE302
+	git checkout -b master origin/master
+	
+Cette commande est à faire parce que le branch est sur master et pas sur main (default)
 
 7.2 Installation des dépendances communes	
 
@@ -126,22 +128,23 @@ Vérifier :
 
 	python3 --version
 
-Installer PyQt5 :
+Installer venv :
 
-	pip install PyQt5
-	
-Installer le connecteur MariaDB pour Python :
-
-	pip install mariadb
+	sudo apt install python3-venv python3-full -y
 	
 
 PARTIE 1 — MASTER	
 
 7.3 Installation de MariaDB (sur la VM Master)
 
+Création d'un environnement virtuel :
+
+	cd Source/Master
+	python3 -m venv venv 
 Installer MariaDB :
 
 	sudo apt update
+	sudo apt install -y libmariadb-dev python3-dev
 	sudo apt install mariadb-server mariadb-client -y
 
 Démarrer le service :
@@ -149,24 +152,12 @@ Démarrer le service :
 	sudo systemctl start mariadb
 	sudo systemctl enable mariadb
 
-Sécurisation de MariaDB :
 
-	sudo mysql_secure_installation
-
-Réponses recommandées :
-
-	Set root password → YES
-	Remove anonymous users → YES
-	Disallow root login remotely → YES
-	Remove test database → YES
-	Reload privilege tables → YES
-
-	
 7.4 Création de la base de données
 
 Connexion à MariaDB :
 
-	mariadb -u root -p
+	sudo mariadb
 
 Création de la base et des tables :
 
@@ -200,6 +191,14 @@ Création d’un utilisateur dédié :
 
 7.5 Lancement du Master
 
+Vérification de l'interface :
+
+	ip a
+	
+Activier l'environnement :
+
+	source venv/bin/activate
+
 Se placer dans le dossier :
 
 	cd Source/Master/code
@@ -219,6 +218,8 @@ Saisir :
 Message attendu :
 
 	[MASTER] En écoute sur le port 5000
+
+	
 
 PARTIE 2 — ROUTEURS
 
