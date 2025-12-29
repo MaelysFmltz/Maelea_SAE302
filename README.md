@@ -137,10 +137,6 @@ PARTIE 1 — MASTER
 
 7.3 Installation de MariaDB (sur la VM Master)
 
-Création d'un environnement virtuel :
-
-	cd Source/Master
-	python3 -m venv venv 
 Installer MariaDB :
 
 	sudo apt update
@@ -189,22 +185,37 @@ Création d’un utilisateur dédié :
 	FLUSH PRIVILEGES;
 	EXIT;
 
+Création d'un environnement virtuel :
+
+	cd Source/Master
+	python3 -m venv venv 
+	
 7.5 Lancement du Master
 
 Vérification de l'interface :
 
 	ip a
-	
+
+S'il n'y a pas d'ip il faut faire :
+
+	sudo apt install isc-dhcp-client
+	sudo dhclient enp0s"3" 
+
+Se placer dans le dossier :
+
+	cd Source/Master
+
 Activier l'environnement :
 
 	source venv/bin/activate
 
-Se placer dans le dossier :
+Installation du connecteur MariaDB Python :
 
-	cd Source/Master/code
+	pip install mariadb
 
 Lancer le Master :
 
+	cd code
 	python3 server_master.py
 
 Saisir :
@@ -225,63 +236,248 @@ PARTIE 2 — ROUTEURS
 
 7.6 Lancement des routeurs (minimum 3)
 
+A répéter pour chaque routeur...
+
+Mise à jour du système :
+
+	sudo apt update
+
+Installation des outils :
+
+	sudo apt install -y git python3 python3-venv python3-pip
+
+Cloner le projet :
+
+	git clone https://github.com/VOTRE_PSEUDO/Maelea_SAE302.git
+	cd Maelea_SAE302
+	git checkout -b master origin/master
+	
 Se placer dans le dossier routeur :
 
-	cd Source/Router/code
+	cd Source/Router
+
+Vérification des fichiers :
+
+	ls
+
+(code/, keys/)
+
+Aller dans le dossier de code :
+
+	cd code
 
 Génération des clés du routeur :
 
 	python3 generate_keys.py
 
-Envoi de la clé publique au Master :
+Résultat : [ROUTEUR] Clés générées.
 
-	python3 send_pub_key.py
+Les fichiers suivants sont crées :
 
-Exemple :
-
-	Nom : R1
-	Port : 5001
-	IP : 127.0.0.1
-	IP Master : 127.0.0.1
-	Port Master : 5000
-
-Port du Master est celui qui a été choisie préalablement dans la configuration du master
+	Source/Router/keys/private.key
+	Source/Router/keys/public.key
 
 Lancement du routeur :
 
 	python3 router.py
 
+	Exemple :
+	Nom du routeur : R1
+	Port d'écoute : 5001
+
 Message attendu :
 
 	[R1] En écoute sur le port 5001
 
+Dans un autre Terminal :
+
+Envoi de la clé publique au Master :
+	
+	cd Maelea_SAE302/Source/Router/code
+	python3 send_pub_key.py
+
+Exemple :
+
+	Nom  du routeur : R1
+	IP du routeur : (faire un "ip a")
+	Port du routeur : 5001
+	IP du Master : (faire "ip a" sur le Master)
+	Port Master : 5000
+
+Port du Master est celui qui a été choisie préalablement dans la configuration du master
+
+Résultat attendu sur le Routeur : 
+
+	[R1] Clé publique envoyée
+
+Résultat attendu sur le Master:
+
+	[MASTER] Routeur enregistré : R1 (adresse ip du routeur):5001
+
+Après l’exécution de send_pub_key.py sur le routeur la clé publique du routeur doit être stockée dans la base MariaDB du Master, dans "routeurs".
+
+Sur le Master :
+
+	sudo mariadb
+Puis :
+
+	USE sae302;
+	SELECT * FROM routeurs;
+
+Le Master stocke les clés publiques et les adresses des routeurs dans une base MariaDB.
+Les clients interrogent ensuite le Master pour récupérer ces informations afin de construire les messages en oignon.
+
+
 Répéter exactement les mêmes étapes pour R2, R3, etc.
-Il faudra changé le nom et le port.
+Il faudra changé le nom et le port, par exemple ( R2 -> 5002, R3 -> 5003)
+
+
+
+
+
 
 PARTIE 3 — CLIENTS
 
-7.7 Lancement des clients
+A répéter pour chaque client (C1,C2...)
+
+Ouvrir un navigateur internet et aller sur le site : 
+
+	https://www.python.org/downloads/windows
+
+Télécharger Python 3 (version stable) et lancer l’installateur.
+
+IMPORTANT : cocher la case « Add Python.exe to PATH »
+
+Cliquer sur « Install Now »
+
+Attendre la fin de l’installation.
+
+Vérifier l’installation :
+
+Ouvrir PowerShell et taper :
+
+	python –-version
+	pip –-version
+	
+Les versions doivent s’afficher sans erreur.
+
+INSTALLATION DE GIT:
+
+Aller sur : https://git-scm.com/download/win
+
+Télécharger Git et lancer l’installation
+
+Vérifier Git :
+
+	git –version
+	
+Ouvrir PowerShell :
+
+Se placer dans le dossier Documents :
+
+	cd Documents
+
+Cloner le projet :
+
+	git clone https://github.com/VOTRE_PSEUDO/Maelea_SAE302.git
+	cd Maelea_SAE302
+	git checkout -b master origin/master
+
+Vérifier la structure :
+
+	ls
+
+On doit voir au minimum :
+	
+	Source
+	README.md
+	database
 
 Se placer dans le dossier client:
 
-	cd Source/Client/code
+	cd Source/Client
 
-Génération des clés client :
+Vérification des fichiers :
 
-	python3 generate_keys.py
+	ls
+
+(code/, keys/)
+
+Créer l’environnement :
+
+	python -m venv venv
+
+Si ça ne fonctionne pas alors il faudra ouvrir Powershell en administrateur, puis taper :
+
+	Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+Quand Windows demande confirmation :
+
+	O
+
+Cette commande permet d'autoriser les scripts uniquement pour l'utilisateur.
+
+Puis rouvrir Powershell normal et relancer la commande.
+	
+Activer l’environnement virtuel :
+
+	venv\Scripts\activate
+
+Il doit avoir affiché (venv)
+
+Installer PyQt5 (interface graphique) :
+
+	pip install PyQt5
+
+Aller dans le dossier de code :
+
+	cd code
+
+Génération des clés du client:
+
+	python generate_keys.py
+
+Résultat : [CLIENT] Clés générées.
+
+Les fichiers suivants sont crées :
+
+	Source/Client/keys/private.key
+	Source/Client/keys/public.key
+
+Installation de PyQt (interface graphique)
 
 Lancement du client :
 
-	python3 client.py
+	python client.py
 
 	Exemple :
-	Nom : C1
-	Port : 6001
-	IP Master : 127.0.0.1
+	Nom du client : C1
+	Port du clientv: 6001
+	IP Master : (faire un ip a sur master)
 	Port Master : 5000
 
 
-Une interface graphique s’ouvre.
+Une interface graphique s’ouvre automatiquement.
+
+Actions automatiques :
+
+- Le client s’enregistre auprès du Master
+- Sa clé publique est envoyée
+- Le Master mémorise le client
+
+Sur Master, un message apparaît :
+
+	[MASTER] Client enregistré : C1 (ip du C1):6001
+
+Il faut également sur Master ouvrir un terminal et taper :
+
+	sudo mariadb
+	USE sae302;
+	SELECT * FROM clients;
+
+Après le lancement d’un client, il faut vérifier sur le Master que sa clé publique est bien stockée dans la base MariaDB grâce à une requête SELECT.
+Cela garantit que les informations sont persistantes et accessibles aux autres composants. Puis nous pourrons lancer un second client...
+
 
 Lancer un second client :
 
@@ -289,6 +485,18 @@ Même procédure avec :
 	
 	Nom : C2
 	Port : 6002
+
+Puis quand au minimum 2 clients ont été crée, il faut aller dans l’interface d'un des clients (pour exemple C1) :
+
+Cliquer sur « Rafraîchir la liste » pour voir les autres clients
+
+	Sélectionner un destinataire (C2)
+	Écrire un message
+	Cliquer sur « Envoyer »
+
+Le message est automatiquement chiffré en plusieurs couches, envoyé au premier routeur, transmis anonymement et déchiffré uniquement par le client final.
+
+
 
 
 
