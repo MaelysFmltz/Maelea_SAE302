@@ -201,10 +201,6 @@ S'il n'y a pas d'ip il faut faire :
 	sudo apt install isc-dhcp-client
 	sudo dhclient enp0s"3" 
 
-Se placer dans le dossier :
-
-	cd Source/Master
-
 Activier l'environnement :
 
 	source venv/bin/activate
@@ -261,6 +257,10 @@ Vérification des fichiers :
 	ls
 
 (code/, keys/)
+
+S'il n'y a pas keys alors :
+	
+	mkdir keys 
 
 Aller dans le dossier de code :
 
@@ -402,6 +402,10 @@ Vérification des fichiers :
 	ls
 
 (code/, keys/)
+
+S'il y a que code alors on doit crée keys :
+
+	mkdir keys
 
 Créer l’environnement :
 
