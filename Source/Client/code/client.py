@@ -3,7 +3,7 @@ import threading
 import random
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout,
-    QPushButton, QListWidget, QTextEdit, QLabel
+    QPushButton, QListWidget, QTextEdit, QLabel, QSpinBox
 )
 
 CLIENT_NAME = input("Nom du client : ")
@@ -19,7 +19,6 @@ def xor_bytes(data, key):
 
 with open("../keys/public.key", "rb") as f:
     CLIENT_PUBKEY = f.read()
-
 def register_client():
     msg = (
         "CLIENT " + CLIENT_NAME + " " +
@@ -48,50 +47,41 @@ def get_from_master(cmd):
 
 def get_clients():
     data = get_from_master(b"CLIENT GET_CLIENTS")
-    result = []
-
+    res = []
     for line in data.splitlines():
         if line == "END":
             break
         parts = line.split(" ")
-        if len(parts) >= 4 and parts[0] == "CLIENT":
-            result.append({
+        if parts[0] == "CLIENT":
+            res.append({
                 "name": parts[1],
                 "ip": parts[2],
                 "port": int(parts[3])
             })
-
-    return result
+    return res
 
 def get_routeurs():
     data = get_from_master(b"CLIENT GET_ROUTEURS")
-    result = []
-
+    res = []
     for line in data.splitlines():
         if line == "END":
             break
         parts = line.split(" ")
-        if len(parts) >= 5 and parts[0] == "ROUTEUR":
-            result.append({
+        if parts[0] == "ROUTEUR":
+            res.append({
+                "name": parts[1],
                 "ip": parts[2],
                 "port": int(parts[3]),
                 "pubkey": bytes.fromhex(parts[4])
             })
-
-    return result
+    return res
 
 def build_onion(message, route, dest_ip, dest_port):
-    payload = message.encode()
-
-    payload = (
-        "FINAL " + dest_ip + " " + str(dest_port) + "\n"
-    ).encode() + payload
+    payload = ("FINAL " + dest_ip + " " + str(dest_port) + "\n" + message).encode()
 
     for r in reversed(route):
-        payload = xor_bytes(
-            ("NEXT " + r["ip"] + " " + str(r["port"]) + "\n").encode() + payload,
-            r["pubkey"]
-        )
+        header = "NEXT " + r["ip"] + " " + str(r["port"]) + "\n"
+        payload = xor_bytes((header + payload.decode()).encode(), r["pubkey"])
 
     return payload
 
@@ -105,7 +95,6 @@ def send_to_router(payload, router, log):
     except Exception as e:
         log("Erreur : " + str(e))
 
-
 def listen_messages(log):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(("0.0.0.0", MY_PORT))
@@ -116,7 +105,7 @@ def listen_messages(log):
         conn, addr = server.accept()
         data = conn.recv(4096)
         if data:
-            log("Message reçu : " + data.decode(errors="ignore"))
+            log("Reçu : " + data.decode(errors="ignore"))
         conn.close()
 
 class ClientUI(QWidget):
@@ -124,13 +113,23 @@ class ClientUI(QWidget):
         super().__init__()
 
         self.setWindowTitle("Client " + CLIENT_NAME)
-        self.setGeometry(300, 200, 400, 500)
+        self.setGeometry(300, 200, 450, 550)
 
         layout = QVBoxLayout()
 
         layout.addWidget(QLabel("Destinataire"))
         self.clients_list = QListWidget()
         layout.addWidget(self.clients_list)
+
+        layout.addWidget(QLabel("Nombre de routeurs (min 3)"))
+        self.spin = QSpinBox()
+        self.spin.setMinimum(3)
+        self.spin.setMaximum(10)
+        self.spin.setValue(3)
+        layout.addWidget(self.spin)
+
+        self.route_label = QLabel("Chemin : ")
+        layout.addWidget(self.route_label)
 
         layout.addWidget(QLabel("Message"))
         self.msg_box = QTextEdit()
@@ -176,14 +175,20 @@ class ClientUI(QWidget):
             return
 
         routers = get_routeurs()
-        if len(routers) < 3:
-            self.log("Pas assez de routeurs")
+        nb = self.spin.value()
+
+        if len(routers) < nb:
+            self.log("Pas assez de routeurs disponibles")
             return
 
-        path = random.sample(routers, 3)
+        path = random.sample(routers, nb)
 
         dest_name = item.text().split(" ")[0]
         dest = next(c for c in get_clients() if c["name"] == dest_name)
+
+        self.route_label.setText(
+            "Chemin : " + " → ".join(r["name"] for r in path)
+        )
 
         payload = build_onion(message, path, dest["ip"], dest["port"])
 
@@ -192,7 +197,6 @@ class ClientUI(QWidget):
             args=(payload, path[0], self.log),
             daemon=True
         ).start()
-
 if __name__ == "__main__":
     register_client()
     app = QApplication([])
