@@ -4,7 +4,6 @@ import threading
 ROUTER_NAME = input("Nom du routeur (ex: R1) : ")
 LISTEN_PORT = int(input("Port d'écoute du routeur : "))
 
-# Chargement clé privée
 with open("../keys/private.key", "rb") as f:
     private_key = f.read()
 
@@ -19,8 +18,6 @@ def handle_client(conn, addr):
         encrypted = conn.recv(65536)
         if not encrypted:
             return
-
-        # Déchiffrement d'une couche
         decrypted = xor_bytes(encrypted, private_key)
         text = decrypted.decode(errors="ignore")
 
@@ -30,7 +27,6 @@ def handle_client(conn, addr):
             header = text
             payload = ""
 
-        # Routage
         if header.startswith("NEXT"):
             _, ip, port = header.split(" ")
             print(f"[{ROUTER_NAME}] Transfert vers {ip}:{port}")
@@ -41,7 +37,6 @@ def handle_client(conn, addr):
             s.close()
 
         else:
-            # Message final
             print("\n===== MESSAGE FINAL =====")
             print(payload)
             print("=========================\n")
