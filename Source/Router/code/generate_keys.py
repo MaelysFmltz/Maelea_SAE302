@@ -11,8 +11,10 @@ def generate_key():
 private_key = generate_key()
 public_key = bytes([b ^ 0xAA for b in private_key])
 
-open(KEY_PATH + "private.key", "wb").write(private_key)
-open(KEY_PATH + "public.key", "wb").write(public_key)
+with open(KEY_PATH + "private.key", "wb") as f:
+    f.write(private_key)
+
+with open(KEY_PATH + "public.key", "wb") as f:
+    f.write(public_key)
 
 print("[ROUTEUR] Clés générées")
-
