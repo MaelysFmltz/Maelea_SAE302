@@ -204,3 +204,4 @@ if __name__ == "__main__":
         daemon=True
     ).start()
     app.exec_()
+
