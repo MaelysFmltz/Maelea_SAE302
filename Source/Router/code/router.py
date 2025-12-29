@@ -6,7 +6,7 @@ LISTEN_PORT = int(input("Port d'écoute du routeur : "))
 
 with open("../keys/private.key", "rb") as f:
     private_key = f.read()
-
+    
 def xor_bytes(data, key):
     result = bytearray()
     for i in range(len(data)):
@@ -18,6 +18,7 @@ def handle_client(conn, addr):
         encrypted = conn.recv(65536)
         if not encrypted:
             return
+
         decrypted = xor_bytes(encrypted, private_key)
         text = decrypted.decode(errors="ignore")
 
@@ -29,7 +30,16 @@ def handle_client(conn, addr):
 
         if header.startswith("NEXT"):
             _, ip, port = header.split(" ")
-            print(f"[{ROUTER_NAME}] Transfert vers {ip}:{port}")
+            print(f"[{ROUTER_NAME}] Transfert vers routeur {ip}:{port}")
+
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((ip, int(port)))
+            s.sendall(payload.encode())
+            s.close()
+
+        elif header.startswith("FINAL"):
+            _, ip, port = header.split(" ")
+            print(f"[{ROUTER_NAME}] Livraison au client {ip}:{port}")
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((ip, int(port)))
@@ -37,9 +47,7 @@ def handle_client(conn, addr):
             s.close()
 
         else:
-            print("\n===== MESSAGE FINAL =====")
-            print(payload)
-            print("=========================\n")
+            print(f"[{ROUTER_NAME}] Entête inconnue")
 
     except Exception as e:
         print(f"[{ROUTER_NAME}] Erreur :", e)
@@ -63,3 +71,4 @@ def start_router():
         ).start()
 
 start_router()
+
