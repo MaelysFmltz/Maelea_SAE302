@@ -11,11 +11,10 @@ MY_PORT = int(input("Port du client : "))
 MASTER_IP = input("IP du master : ")
 MASTER_PORT = int(input("Port du master : "))
 
-def xor_bytes(data, key):
-    result = bytearray()
-    for i in range(len(data)):
-        result.append(data[i] ^ key[i % len(key)])
-    return bytes(result)
+def rsa_encrypt(text, pubkey):
+    e, n = pubkey
+    return [pow(ord(c), e, n) for c in text]
+
 
 with open("../keys/public.key", "rb") as f:
     CLIENT_PUBKEY = f.read()
