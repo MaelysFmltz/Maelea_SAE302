@@ -6,26 +6,30 @@ LISTEN_PORT = int(input("Port d'écoute du routeur : "))
 
 with open("../keys/private.key", "rb") as f:
     private_key = f.read()
-    
+
+
 def xor_bytes(data, key):
     result = bytearray()
     for i in range(len(data)):
         result.append(data[i] ^ key[i % len(key)])
     return bytes(result)
 
+
 def handle_client(conn, addr):
     try:
         encrypted = conn.recv(65536)
         if not encrypted:
             return
-        decrypted = xor_bytes(encrypted, private_key)
-        text = decrypted.decode(errors="ignore")
 
-        if "\n" not in text:
+        decrypted = xor_bytes(encrypted, private_key)
+
+        sep = decrypted.find(b"\n")
+        if sep == -1:
             print(f"[{ROUTER_NAME}] En-tête invalide")
             return
 
-        header, payload = text.split("\n", 1)
+        header = decrypted[:sep].decode(errors="ignore")
+        payload = decrypted[sep + 1:]
 
         if header.startswith("NEXT"):
             _, ip, port = header.split(" ")
@@ -35,9 +39,9 @@ def handle_client(conn, addr):
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((ip, port))
-            s.sendall(payload.encode())
+            s.sendall(payload)
             s.close()
-            
+
         elif header.startswith("FINAL"):
             _, ip, port = header.split(" ")
             port = int(port)
@@ -46,7 +50,7 @@ def handle_client(conn, addr):
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((ip, port))
-            s.sendall(payload.encode())
+            s.sendall(payload)
             s.close()
 
         else:
@@ -73,6 +77,7 @@ def start_router():
             args=(conn, addr),
             daemon=True
         ).start()
+
 
 start_router()
 
