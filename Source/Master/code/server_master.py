@@ -28,25 +28,29 @@ def save_router(name, ip, port, pubkey):
     conn = connect_db()
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO routeurs (router_name, ip, port, public_key) VALUES (?, ?, ?, ?) "
+        "INSERT INTO routeurs (router_name, ip, port, public_key) "
+        "VALUES (?, ?, ?, ?) "
         "ON DUPLICATE KEY UPDATE ip=?, port=?, public_key=?",
         (name, ip, port, pubkey, ip, port, pubkey)
     )
     conn.commit()
     conn.close()
     print(f"[MASTER] Routeur enregistré : {name} {ip}:{port}")
+    log(f"Routeur enregistré : {name} {ip}:{port}")
 
 def save_client(name, ip, port, pubkey):
     conn = connect_db()
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO clients (client_name, ip, port, public_key) VALUES (?, ?, ?, ?) "
+        "INSERT INTO clients (client_name, ip, port, public_key) "
+        "VALUES (?, ?, ?, ?) "
         "ON DUPLICATE KEY UPDATE ip=?, port=?, public_key=?",
         (name, ip, port, pubkey, ip, port, pubkey)
     )
     conn.commit()
     conn.close()
     print(f"[MASTER] Client enregistré : {name} {ip}:{port}")
+    log(f"Client enregistré : {name} {ip}:{port}")
 
 def list_routeurs():
     conn = connect_db()
@@ -73,53 +77,66 @@ def list_clients():
     return "\n".join(out)
 
 def handle_client(conn, addr):
-    data = conn.recv(65536).decode().strip()
-    log(data)
+    try:
+        data = conn.recv(65536).decode(errors="ignore").strip()
+        log(f"Reçu de {addr} : {data}")
 
-    if data.startswith("ROUTEUR"):
-        lines = data.split("\n")
-        name = ip = port = pubkey = ""
-        read = False
-        for l in lines:
-            if l.startswith("ROUTEUR"):
-                name = l.split()[1]
-            elif l.startswith("IP"):
-                ip = l.split()[1]
-            elif l.startswith("PORT"):
-                port = l.split()[1]
-            elif l == "PUBKEY":
-                read = True
-            elif l == "END":
-                break
-            elif read:
-                pubkey += l
-        save_router(name, ip, int(port), pubkey)
-        conn.sendall(b"OK")
+        if data.startswith("ROUTEUR"):
+            lines = data.split("\n")
+            name = ip = port = pubkey = ""
+            reading = False
 
-    elif data.startswith("CLIENT ") and not data.startswith("CLIENT GET"):
-        parts = data.split(" ", 3)
-        save_client(parts[1], addr[0], int(parts[2]), parts[3])
-        conn.sendall(b"OK")
+            for l in lines:
+                if l.startswith("ROUTEUR"):
+                    name = l.split()[1]
+                elif l.startswith("IP"):
+                    ip = l.split()[1]
+                elif l.startswith("PORT"):
+                    port = l.split()[1]
+                elif l == "PUBKEY":
+                    reading = True
+                elif l == "END":
+                    break
+                elif reading:
+                    pubkey += l
 
-    elif data == "CLIENT GET_CLIENTS":
-        conn.sendall(list_clients().encode())
+            save_router(name, ip, int(port), pubkey)
+            conn.sendall(b"OK")
 
-    elif data == "CLIENT GET_ROUTEURS":
-        conn.sendall(list_routeurs().encode())
+        elif data.startswith("CLIENT ") and not data.startswith("CLIENT GET"):
+            parts = data.split(" ", 3)
+            save_client(parts[1], addr[0], int(parts[2]), parts[3])
+            conn.sendall(b"OK")
 
-    else:
-        conn.sendall(b"UNKNOWN")
+        elif data == "CLIENT GET_CLIENTS":
+            conn.sendall(list_clients().encode())
 
-    conn.close()
+        elif data == "CLIENT GET_ROUTEURS":
+            conn.sendall(list_routeurs().encode())
+
+        else:
+            conn.sendall(b"UNKNOWN")
+
+    except Exception as e:
+        print("[MASTER] Erreur :", e)
+        log(str(e))
+
+    finally:
+        conn.close()
 
 def start_master():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(("0.0.0.0", LISTEN_PORT))
     s.listen(5)
     print(f"[MASTER] En écoute sur {LISTEN_PORT}")
+    log("Master démarré")
+
     while True:
         c, a = s.accept()
-        threading.Thread(target=handle_client, args=(c, a), daemon=True).start()
+        threading.Thread(
+            target=handle_client,
+            args=(c, a),
+            daemon=True
+        ).start()
 
 start_master()
-
