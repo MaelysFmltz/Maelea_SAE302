@@ -1,208 +1,77 @@
-import socket
-import threading
-import random
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout,
-    QPushButton, QListWidget, QTextEdit,
-    QLabel, QSpinBox
-)
+import socket, threading, random
+from PyQt5.QtWidgets import *
 
 CLIENT_NAME = input("Nom du client : ")
 MY_PORT = int(input("Port du client : "))
 MASTER_IP = input("IP du master : ")
 MASTER_PORT = int(input("Port du master : "))
 
-with open(f"../keys/{CLIENT_NAME}.public", "r") as f:
-    CLIENT_PUBKEY = f.read().strip()
+with open("../keys/session.key","rb") as f:
+    session_key = f.read()
 
-def register_client():
-    msg = f"CLIENT {CLIENT_NAME} {MY_PORT} {CLIENT_PUBKEY}\n"
-    s = socket.socket()
-    s.connect((MASTER_IP, MASTER_PORT))
-    s.sendall(msg.encode())
-    s.close()
+def xor(data, key):
+    return bytes(data[i] ^ key[i % len(key)] for i in range(len(data)))
 
-def ask_master(cmd):
-    s = socket.socket()
-    s.connect((MASTER_IP, MASTER_PORT))
+def rsa_encrypt(data, pub):
+    e,n = pub
+    return ";".join(str(pow(b,e,n)) for b in data)
+
+def ask(cmd):
+    s=socket.socket()
+    s.connect((MASTER_IP,MASTER_PORT))
     s.sendall(cmd)
-    data = b""
+    data=b""
     while True:
-        part = s.recv(4096)
-        if not part:
-            break
-        data += part
+        p=s.recv(4096)
+        if not p: break
+        data+=p
     s.close()
     return data.decode()
 
-def get_clients():
-    res = []
-    data = ask_master(b"CLIENT GET_CLIENTS")
-
-    for line in data.splitlines():
-        if line == "END":
-            break
-
-        parts = line.split()
-        if len(parts) != 4:
-            continue
-
-        if parts[0] != "CLIENT":
-            continue
-
-        res.append({
-            "name": parts[1],
-            "ip": parts[2],
-            "port": int(parts[3])
-        })
-
-    return res
-
-
 def get_routeurs():
-    res = []
-    data = ask_master(b"CLIENT GET_ROUTEURS")
-
-    for line in data.splitlines():
-        if line == "END":
-            break
-
-        parts = line.split()
-        if len(parts) != 5:
-            continue
-
-        if parts[0] != "ROUTEUR":
-            continue
-
-        e, n = map(int, parts[4].split(","))
-
-        res.append({
-            "name": parts[1],
-            "ip": parts[2],
-            "port": int(parts[3]),
-            "pubkey": (e, n)
-        })
-
+    res=[]
+    for l in ask(b"CLIENT GET_ROUTEURS").splitlines():
+        if l=="END": break
+        p=l.split()
+        e,n=map(int,p[4].split(","))
+        res.append({"name":p[1],"ip":p[2],"port":int(p[3]),"pub":(e,n)})
     return res
-
-
-def build_onion(message, path, dest_ip, dest_port):
-    payload = f"FINAL {dest_ip} {dest_port}\n{message}"
-    for r in reversed(path):
-        payload = f"NEXT {r['ip']} {r['port']}\n{payload}"
-    return payload
-
-def send_to_router(payload, router, log):
-    s = socket.socket()
-    s.connect((router["ip"], router["port"]))
-    s.sendall(payload.encode())
-    s.close()
-    log("Message envoyé")
-
-def listen_messages(log):
-    server = socket.socket()
-    server.bind(("0.0.0.0", MY_PORT))
-    server.listen(5)
-    log("Client en écoute")
-    while True:
-        conn, _ = server.accept()
-        data = conn.recv(4096)
-        if data:
-            log("Message reçu : " + data.decode(errors="ignore"))
-        conn.close()
 
 class ClientUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Client " + CLIENT_NAME)
-        self.setGeometry(300, 200, 400, 550)
+        self.setWindowTitle("Client "+CLIENT_NAME)
+        l=QVBoxLayout()
+        self.logbox=QTextEdit(); self.logbox.setReadOnly(True)
+        self.msg=QTextEdit()
+        self.btn=QPushButton("Envoyer")
+        self.btn.clicked.connect(self.send)
+        l.addWidget(self.msg); l.addWidget(self.btn); l.addWidget(self.logbox)
+        self.setLayout(l)
 
-        layout = QVBoxLayout()
+    def send(self):
+        routers=get_routeurs()
+        path=random.sample(routers,3)
+        self.logbox.append("Chemin: "+" → ".join(r["name"] for r in path))
 
-        layout.addWidget(QLabel("Destinataire"))
-        self.clients_list = QListWidget()
-        layout.addWidget(self.clients_list)
+        payload="FINAL 127.0.0.1 "+str(MY_PORT)+"\n"+self.msg.toPlainText()
+        payload=xor(payload.encode(),session_key)
 
-        layout.addWidget(QLabel("Nombre de routeurs (min 3)"))
-        self.spin = QSpinBox()
-        self.spin.setMinimum(3)
-        self.spin.setMaximum(10)
-        self.spin.setValue(3)
-        layout.addWidget(self.spin)
+        for r in reversed(path):
+            enc=rsa_encrypt(session_key,r["pub"])
+            s=socket.socket()
+            s.connect((r["ip"],r["port"]))
+            s.sendall(b"KEY|"+enc.encode())
+            s.close()
+            payload=xor(payload,session_key)
 
-        self.route_label = QLabel("Chemin : ")
-        layout.addWidget(self.route_label)
+        s=socket.socket()
+        s.connect((path[0]["ip"],path[0]["port"]))
+        s.sendall(payload)
+        s.close()
+        self.logbox.append("Message envoyé")
 
-        layout.addWidget(QLabel("Message"))
-        self.msg_box = QTextEdit()
-        layout.addWidget(self.msg_box)
-
-        self.send_btn = QPushButton("Envoyer")
-        self.send_btn.clicked.connect(self.send_message)
-        layout.addWidget(self.send_btn)
-
-        self.refresh_btn = QPushButton("Rafraîchir")
-        self.refresh_btn.clicked.connect(self.refresh_clients)
-        layout.addWidget(self.refresh_btn)
-
-        layout.addWidget(QLabel("Journal"))
-        self.logs = QTextEdit()
-        self.logs.setReadOnly(True)
-        layout.addWidget(self.logs)
-
-        self.setLayout(layout)
-        self.refresh_clients()
-
-    def log(self, txt):
-        self.logs.append(txt)
-
-    def refresh_clients(self):
-        self.clients_list.clear()
-        for c in get_clients():
-            if c["name"] != CLIENT_NAME:
-                self.clients_list.addItem(
-                    f"{c['name']} ({c['ip']}:{c['port']})"
-                )
-        self.log("Liste mise à jour")
-
-    def send_message(self):
-        item = self.clients_list.currentItem()
-        if not item:
-            self.log("Aucun destinataire")
-            return
-
-        message = self.msg_box.toPlainText().strip()
-        if not message:
-            self.log("Message vide")
-            return
-
-        routers = get_routeurs()
-        nb = self.spin.value()
-
-        path = random.sample(routers, nb)
-
-        dest_name = item.text().split(" ")[0]
-        dest = next(c for c in get_clients() if c["name"] == dest_name)
-
-        self.route_label.setText(
-            "Chemin : " + " → ".join(r["name"] for r in path)
-        )
-
-        payload = build_onion(message, path, dest["ip"], dest["port"])
-
-        threading.Thread(
-            target=send_to_router,
-            args=(payload, path[0], self.log),
-            daemon=True
-        ).start()
-
-register_client()
-app = QApplication([])
-window = ClientUI()
-window.show()
-threading.Thread(
-    target=listen_messages,
-    args=(window.log,),
-    daemon=True
-).start()
+app=QApplication([])
+w=ClientUI()
+w.show()
 app.exec_()
