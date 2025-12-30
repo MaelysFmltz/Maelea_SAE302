@@ -4,26 +4,25 @@ import threading
 ROUTER_NAME = input("Nom du routeur (ex: R1) : ")
 LISTEN_PORT = int(input("Port d'écoute du routeur : "))
 
-with open("../keys/private.key", "rb") as f:
-    private_key = f.read()
+with open("../keys/private.key", "r") as f:
+    d, n = map(int, f.read().split(","))
 
-def xor_bytes(data, key):
-    result = bytearray()
-    for i in range(len(data)):
-        result.append(data[i] ^ key[i % len(key)])
-    return bytes(result)
+PRIVATE_KEY = (d, n)
 
+def rsa_decrypt(data, privkey):
+    d, n = privkey
+    chars = data.split(";")
+    return "".join(chr(pow(int(c), d, n)) for c in chars)
 def handle_client(conn, addr):
     try:
         encrypted = conn.recv(65536)
         if not encrypted:
             return
 
-        decrypted = xor_bytes(encrypted, private_key)
-
         try:
-            text = decrypted.decode("utf-8", errors="strict")
-        except:
+            # RSA enlève UNE couche
+            text = rsa_decrypt(encrypted.decode(), PRIVATE_KEY)
+        except Exception:
             print(f"[{ROUTER_NAME}] Données corrompues (mauvaise couche)")
             return
 
@@ -32,7 +31,6 @@ def handle_client(conn, addr):
             return
 
         header, payload = text.split("\n", 1)
-
         if header.startswith("NEXT"):
             _, ip, port = header.split(" ")
             port = int(port)
@@ -63,7 +61,6 @@ def handle_client(conn, addr):
 
     finally:
         conn.close()
-
 def start_router():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(("0.0.0.0", LISTEN_PORT))
