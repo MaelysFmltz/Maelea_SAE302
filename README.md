@@ -112,7 +112,7 @@ ou si problème :
 
 Cloner le projet :
 
-	git clone https://github.com/VOTRE_PSEUDO/Maelea_SAE302.git
+	git clone https://github.com/MaelysFmltz/Maelea_SAE302.git
 	cd Maelea_SAE302
 	git checkout -b master origin/master
 	
@@ -244,7 +244,7 @@ Installation des outils :
 
 Cloner le projet :
 
-	git clone https://github.com/VOTRE_PSEUDO/Maelea_SAE302.git
+	git clone https://github.com/MaelysFmltz/Maelea_SAE302.git
 	cd Maelea_SAE302
 	git checkout -b master origin/master
 	
@@ -281,7 +281,8 @@ Lancement du routeur :
 
 	python3 router.py
 
-	Exemple :
+Exemple :
+	
 	Nom du routeur : R1
 	Port d'écoute : 5001
 
@@ -379,7 +380,7 @@ Se placer dans le dossier Documents :
 
 Cloner le projet :
 
-	git clone https://github.com/VOTRE_PSEUDO/Maelea_SAE302.git
+	git clone https://github.com/MaelysFmltz/Maelea_SAE302.git
 	cd Maelea_SAE302
 	git checkout -b master origin/master
 
