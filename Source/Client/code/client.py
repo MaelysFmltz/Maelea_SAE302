@@ -77,13 +77,20 @@ def get_routeurs():
     return res
 
 def build_onion(message, route, dest_ip, dest_port):
-    payload = ("FINAL " + dest_ip + " " + str(dest_port) + "\n" + message).encode()
+    payload = message.encode()
+
+    payload = (
+        f"FINAL {dest_ip} {dest_port}\n".encode()
+        + payload
+    )
 
     for r in reversed(route):
-        header = "NEXT " + r["ip"] + " " + str(r["port"]) + "\n"
-        payload = xor_bytes((header + payload.decode()).encode(), r["pubkey"])
+        header = f"NEXT {r['ip']} {r['port']}\n".encode()
+        payload = header + payload
+        payload = xor_bytes(payload, r["pubkey"])
 
     return payload
+
 
 def send_to_router(payload, router, log):
     try:
