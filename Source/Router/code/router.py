@@ -18,33 +18,46 @@ def handle_client(conn, addr):
         encrypted = conn.recv(65536)
         if not encrypted:
             return
-
         decrypted = xor_bytes(encrypted, private_key)
         text = decrypted.decode(errors="ignore")
 
-        if "\n" in text:
-            header, payload = text.split("\n", 1)
-        else:
-            header = text
-            payload = ""
+        if "\n" not in text:
+            print(f"[{ROUTER_NAME}] En-tête invalide")
+            return
+
+        header, payload = text.split("\n", 1)
 
         if header.startswith("NEXT"):
             _, ip, port = header.split(" ")
-            print(f"[{ROUTER_NAME}] Transfert vers routeur {ip}:{port}")
+            port = int(port)
+
+            print(f"[{ROUTER_NAME}] Transfert vers {ip}:{port}")
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((ip, int(port)))
+            s.connect((ip, port))
             s.sendall(payload.encode())
             s.close()
-
+            
         elif header.startswith("FINAL"):
             _, ip, port = header.split(" ")
-            print(f"[{ROUTER_NAME}] Livraison au client {ip}:{port}")
+            port = int(port)
+
+            print(f"[{ROUTER_NAME}] Livraison finale vers {ip}:{port}")
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((ip, int(port)))
+            s.connect((ip, port))
             s.sendall(payload.encode())
             s.close()
+
+        else:
+            print(f"[{ROUTER_NAME}] En-tête inconnu :", header)
+
+    except Exception as e:
+        print(f"[{ROUTER_NAME}] Erreur :", e)
+
+    finally:
+        conn.close()
+
 
         else:
             print(f"[{ROUTER_NAME}] Entête inconnue")
