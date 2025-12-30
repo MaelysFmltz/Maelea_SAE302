@@ -37,25 +37,54 @@ def ask_master(cmd):
 
 def get_clients():
     res = []
-    for line in ask_master(b"CLIENT GET_CLIENTS").splitlines():
+    data = ask_master(b"CLIENT GET_CLIENTS")
+
+    for line in data.splitlines():
         if line == "END":
             break
-        p = line.split()
-        res.append({"name": p[1], "ip": p[2], "port": int(p[3])})
+
+        parts = line.split()
+        if len(parts) != 4:
+            continue
+
+        if parts[0] != "CLIENT":
+            continue
+
+        res.append({
+            "name": parts[1],
+            "ip": parts[2],
+            "port": int(parts[3])
+        })
+
     return res
+
 
 def get_routeurs():
     res = []
-    for line in ask_master(b"CLIENT GET_ROUTEURS").splitlines():
+    data = ask_master(b"CLIENT GET_ROUTEURS")
+
+    for line in data.splitlines():
         if line == "END":
             break
-        p = line.split()
+
+        parts = line.split()
+        if len(parts) != 5:
+            continue
+
+        if parts[0] != "ROUTEUR":
+            continue
+
+        e, n = map(int, parts[4].split(","))
+
         res.append({
-            "name": p[1],
-            "ip": p[2],
-            "port": int(p[3])
+            "name": parts[1],
+            "ip": parts[2],
+            "port": int(parts[3]),
+            "pubkey": (e, n)
         })
+
     return res
+
 
 def build_onion(message, path, dest_ip, dest_port):
     payload = f"FINAL {dest_ip} {dest_port}\n{message}"
