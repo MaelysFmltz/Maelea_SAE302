@@ -1,6 +1,6 @@
 import socket
 
-ROUTER_NAME = input("Nom du routeur (ex: R1) : ")
+ROUTER_NAME = input("Nom du routeur : ")
 ROUTER_IP = input("IP du routeur : ")
 ROUTER_PORT = input("Port d'écoute du routeur : ")
 
@@ -19,7 +19,7 @@ msg = (
     "END\n"
 )
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s = socket.socket()
 s.connect((MASTER_IP, MASTER_PORT))
 s.sendall(msg.encode())
 s.close()
