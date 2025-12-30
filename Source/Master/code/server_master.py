@@ -93,4 +93,4 @@ print("[MASTER] OK")
 
 while True:
     c, a = s.accept()
-    threading.Thread(target=handle, args=(c,a), daemon=True).start()
+    threading.Thread(target=handle_client, args=(c,a), daemon=True).start()
