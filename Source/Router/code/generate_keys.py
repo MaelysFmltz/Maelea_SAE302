@@ -32,7 +32,7 @@ def inv(a, m):
 
 d = inv(e, phi)
 
-open(f"keys/{ROUTER_NAME}.public", "w").write(f"{e},{n}")
-open(f"keys/{ROUTER_NAME}.private", "w").write(f"{d},{n}")
+open(f"..keys/{ROUTER_NAME}.public", "w").write(f"{e},{n}")
+open(f"..keys/{ROUTER_NAME}.private", "w").write(f"{d},{n}")
 
 print(f"[{ROUTER_NAME}] Clés RSA générées")
