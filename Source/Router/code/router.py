@@ -7,13 +7,11 @@ LISTEN_PORT = int(input("Port d'écoute du routeur : "))
 with open("../keys/private.key", "rb") as f:
     private_key = f.read()
 
-
 def xor_bytes(data, key):
     result = bytearray()
     for i in range(len(data)):
         result.append(data[i] ^ key[i % len(key)])
     return bytes(result)
-
 
 def handle_client(conn, addr):
     try:
@@ -23,34 +21,38 @@ def handle_client(conn, addr):
 
         decrypted = xor_bytes(encrypted, private_key)
 
-        sep = decrypted.find(b"\n")
-        if sep == -1:
+        try:
+            text = decrypted.decode("utf-8", errors="strict")
+        except:
+            print(f"[{ROUTER_NAME}] Données corrompues (mauvaise couche)")
+            return
+
+        if "\n" not in text:
             print(f"[{ROUTER_NAME}] En-tête invalide")
             return
 
-        header = decrypted[:sep].decode(errors="ignore")
-        payload = decrypted[sep + 1:]
+        header, payload = text.split("\n", 1)
 
         if header.startswith("NEXT"):
             _, ip, port = header.split(" ")
             port = int(port)
 
-            print(f"[{ROUTER_NAME}] Transfert vers {ip}:{port}")
+            print(f"[{ROUTER_NAME}] → Transfert vers {ip}:{port}")
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((ip, port))
-            s.sendall(payload)
+            s.sendall(payload.encode())
             s.close()
 
         elif header.startswith("FINAL"):
             _, ip, port = header.split(" ")
             port = int(port)
 
-            print(f"[{ROUTER_NAME}] Livraison finale vers {ip}:{port}")
+            print(f"[{ROUTER_NAME}] → Livraison finale vers {ip}:{port}")
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((ip, port))
-            s.sendall(payload)
+            s.sendall(payload.encode())
             s.close()
 
         else:
@@ -61,7 +63,6 @@ def handle_client(conn, addr):
 
     finally:
         conn.close()
-
 
 def start_router():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -78,6 +79,4 @@ def start_router():
             daemon=True
         ).start()
 
-
 start_router()
-
