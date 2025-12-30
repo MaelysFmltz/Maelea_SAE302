@@ -4,7 +4,7 @@ import threading
 ROUTER_NAME = input("Nom du routeur : ")
 LISTEN_PORT = int(input("Port d'écoute : "))
 
-with open(f"../keys/{ROUTER_NAME}.private") as f:
+with open("../keys/private.key") as f:
     d, n = map(int, f.read().split(","))
 
 def rsa_decrypt(data):
@@ -12,6 +12,7 @@ def rsa_decrypt(data):
 
 def handle(conn):
     enc = conn.recv(65536).decode()
+
     try:
         text = rsa_decrypt(enc)
     except:
@@ -24,22 +25,22 @@ def handle(conn):
         conn.close()
         return
 
-    header, payload = text.split("\n", 1)
+    header, rest = text.split("\n", 1)
 
     if header.startswith("NEXT"):
         _, ip, port = header.split()
-        print(f"[{ROUTER_NAME}] → {ip}:{port}")
+        print(f"[{ROUTER_NAME}] → NEXT {ip}:{port}")
         s = socket.socket()
         s.connect((ip, int(port)))
-        s.sendall(payload.encode())
+        s.sendall(rest.encode())
         s.close()
 
     elif header.startswith("FINAL"):
         _, ip, port = header.split()
-        print(f"[{ROUTER_NAME}] → Livraison finale")
+        print(f"[{ROUTER_NAME}] → FINAL {ip}:{port}")
         s = socket.socket()
         s.connect((ip, int(port)))
-        s.sendall(payload.encode())
+        s.sendall(rest.encode())
         s.close()
 
     conn.close()
@@ -48,7 +49,7 @@ s = socket.socket()
 s.bind(("0.0.0.0", LISTEN_PORT))
 s.listen(5)
 
-print(f"[{ROUTER_NAME}] En écoute sur {LISTEN_PORT}")
+print(f"[{ROUTER_NAME}] En écoute")
 
 while True:
     c, _ = s.accept()
