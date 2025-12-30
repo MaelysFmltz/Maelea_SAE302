@@ -30,10 +30,10 @@ Routeur
 
 Client
 
-- Interface graphique Qt
+- Interface graphique Qt permetant l'envoi de messages ver un destinater (un autre client)
 - Enregistre sa clé publique auprès du Master
 - Récupère la topologie (clients et routeurs)
-- Construit le message en oignon
+- Construit le message en oignon de sorte a les securiser
 - Envoie le message sans bloquer l’interface
 
 3. Librairies utilisées
@@ -64,7 +64,7 @@ Le fichier README.md regroupe l’ensemble de la documentation du projet : prés
 
 5. Base de données MariaDB
 
-La base de données est utilisée par le Master pour stocker les clés publiques.
+La base de données est utilisée par le Master pour stocker les clés publiques des routeurs et des clients.
 Elle n’est pas stockée sur GitHub, seul le script SQL est fourni qui s'appel : schema.sql
 
 6. Algorithme de chiffrement (routage en oignon)
