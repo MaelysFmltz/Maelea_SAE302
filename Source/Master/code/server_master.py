@@ -16,68 +16,75 @@ def connect():
         database=DB_NAME
     )
 
-def handle(c, addr):
-    data = c.recv(65536).decode()
+def handle_client(conn, addr):
+    data = conn.recv(65536).decode().strip()
+
+    conn_db = connect_db()
+    cur = conn_db.cursor()
 
     if data.startswith("ROUTEUR"):
-        lines = data.splitlines()
-        name = ip = port = pub = ""
-        read = False
+        lines = data.split("\n")
+        name = ip = port = pubkey = ""
+        reading = False
+
         for l in lines:
             if l.startswith("ROUTEUR"):
                 name = l.split()[1]
             elif l.startswith("IP"):
                 ip = l.split()[1]
             elif l.startswith("PORT"):
-                port = l.split()[1]
+                port = int(l.split()[1])
             elif l == "PUBKEY":
-                read = True
+                reading = True
             elif l == "END":
                 break
-            elif read:
-                pub += l
+            elif reading:
+                pubkey += l
 
-        db = connect()
-        cur = db.cursor()
         cur.execute(
-            "INSERT INTO routeurs VALUES (?,?,?,?) "
-            "ON DUPLICATE KEY UPDATE ip=?,port=?,public_key=?",
-            (name, ip, port, pub, ip, port, pub)
+            "INSERT INTO routeurs (router_name, ip, port, public_key) "
+            "VALUES (?, ?, ?, ?) "
+            "ON DUPLICATE KEY UPDATE ip=?, port=?, public_key=?",
+            (name, ip, port, pubkey, ip, port, pubkey)
         )
-        db.commit()
-        db.close()
-        c.sendall(b"OK")
+
+        conn_db.commit()
+        conn.sendall(b"OK")
 
     elif data.startswith("CLIENT ") and not data.startswith("CLIENT GET"):
-        _, name, port, pub = data.split(" ", 3)
-        db = connect()
-        cur = db.cursor()
+        parts = data.split(" ", 3)
+
+        name = parts[1]
+        port = int(parts[2])
+        pubkey = parts[3]
+        ip = addr[0]
+
         cur.execute(
-            "INSERT INTO clients VALUES (?,?,?,?) "
-            "ON DUPLICATE KEY UPDATE ip=?,port=?,public_key=?",
-            (name, addr[0], port, pub, addr[0], port, pub)
+            "INSERT INTO clients (client_name, ip, port, public_key) "
+            "VALUES (?, ?, ?, ?) "
+            "ON DUPLICATE KEY UPDATE ip=?, port=?, public_key=?",
+            (name, ip, port, pubkey, ip, port, pubkey)
         )
-        db.commit()
-        db.close()
-        c.sendall(b"OK")
+
+        conn_db.commit()
+        conn.sendall(b"OK")
 
     elif data == "CLIENT GET_CLIENTS":
-        db = connect()
-        cur = db.cursor()
-        cur.execute("SELECT * FROM clients")
-        out = "\n".join(f"CLIENT {a} {b} {c} {d}" for a,b,c,d in cur.fetchall())
-        c.sendall((out + "\nEND").encode())
-        db.close()
+        cur.execute("SELECT client_name, ip, port FROM clients")
+        rows = cur.fetchall()
+        out = [f"CLIENT {r[0]} {r[1]} {r[2]}" for r in rows]
+        out.append("END")
+        conn.sendall("\n".join(out).encode())
 
     elif data == "CLIENT GET_ROUTEURS":
-        db = connect()
-        cur = db.cursor()
-        cur.execute("SELECT * FROM routeurs")
-        out = "\n".join(f"ROUTEUR {a} {b} {c} {d}" for a,b,c,d in cur.fetchall())
-        c.sendall((out + "\nEND").encode())
-        db.close()
+        cur.execute("SELECT router_name, ip, port, public_key FROM routeurs")
+        rows = cur.fetchall()
+        out = [f"ROUTEUR {r[0]} {r[1]} {r[2]} {r[3]}" for r in rows]
+        out.append("END")
+        conn.sendall("\n".join(out).encode())
 
-    c.close()
+    conn_db.close()
+    conn.close()
 
 s = socket.socket()
 s.bind(("0.0.0.0", LISTEN_PORT))
