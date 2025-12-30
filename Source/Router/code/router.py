@@ -59,15 +59,6 @@ def handle_client(conn, addr):
         conn.close()
 
 
-        else:
-            print(f"[{ROUTER_NAME}] Entête inconnue")
-
-    except Exception as e:
-        print(f"[{ROUTER_NAME}] Erreur :", e)
-
-    finally:
-        conn.close()
-
 def start_router():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(("0.0.0.0", LISTEN_PORT))
