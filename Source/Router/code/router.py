@@ -2,7 +2,7 @@ import socket
 import threading
 
 ROUTER_NAME = input("Nom du routeur : ")
-LISTEN_PORT = int(input("Port : "))
+LISTEN_PORT = int(input("Port d'écoute : "))
 
 with open("../keys/private.key") as f:
     d, n = map(int, f.read().split(","))
@@ -10,33 +10,30 @@ with open("../keys/private.key") as f:
 def rsa_decrypt(data):
     return "".join(chr(pow(int(x), d, n)) for x in data.split(";") if x)
 
+def xor(data, key):
+    return bytes(data[i] ^ key[i % len(key)] for i in range(len(data)))
+
 def handle(conn):
-    try:
-        enc = conn.recv(65536).decode()
-        text = rsa_decrypt(enc)
-    except:
-        conn.close()
-        return
+    enc = conn.recv(65536).decode()
+    text = rsa_decrypt(enc)
 
-    if "\n" not in text:
-        conn.close()
-        return
+    header, rest = text.split("\n", 1)
+    key_hex, payload = rest.split("\n", 1)
+    key = bytes.fromhex(key_hex)
 
-    header, payload = text.split("\n", 1)
+    clear = xor(payload.encode(), key).decode()
 
-    if header.startswith("NEXT"):
-        _, ip, port = header.split()
-        s = socket.socket()
-        s.connect((ip, int(port)))
-        s.sendall(payload.encode())
-        s.close()
+    h, msg = clear.split("\n", 1)
 
-    elif header.startswith("FINAL"):
-        _, ip, port = header.split()
-        s = socket.socket()
-        s.connect((ip, int(port)))
-        s.sendall(payload.encode())
-        s.close()
+    if h.startswith("NEXT"):
+        _, ip, port = h.split()
+    else:
+        _, ip, port = h.split()
+
+    s = socket.socket()
+    s.connect((ip, int(port)))
+    s.sendall(msg.encode())
+    s.close()
 
     conn.close()
 
