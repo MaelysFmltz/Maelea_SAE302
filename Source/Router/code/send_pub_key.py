@@ -2,7 +2,7 @@ import socket
 
 ROUTER_NAME = input("Nom du routeur : ")
 ROUTER_IP = input("IP du routeur : ")
-ROUTER_PORT = input("Port d'écoute du routeur : ")
+ROUTER_PORT = input("Port du routeur : ")
 
 MASTER_IP = input("IP du master : ")
 MASTER_PORT = int(input("Port du master : "))
@@ -24,4 +24,4 @@ s.connect((MASTER_IP, MASTER_PORT))
 s.sendall(msg.encode())
 s.close()
 
-print(f"[{ROUTER_NAME}] Clé publique envoyée au Master")
+print(f"[{ROUTER_NAME}] Clé publique envoyée")
