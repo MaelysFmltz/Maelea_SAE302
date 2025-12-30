@@ -2,13 +2,13 @@ import socket
 
 ROUTER_NAME = input("Nom du routeur : ")
 ROUTER_IP = input("IP du routeur : ")
-ROUTER_PORT = input("Port du routeur : ")
+ROUTER_PORT = input("Port d'écoute : ")
 
 MASTER_IP = input("IP du master : ")
 MASTER_PORT = int(input("Port du master : "))
 
 with open("../keys/public.key", "r") as f:
-    pubkey = f.read()
+    pubkey = f.read().strip()
 
 msg = (
     f"ROUTEUR {ROUTER_NAME}\n"
@@ -23,3 +23,5 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((MASTER_IP, MASTER_PORT))
 s.sendall(msg.encode())
 s.close()
+
+print(f"[{ROUTER_NAME}] Clé publique envoyée au Master")
