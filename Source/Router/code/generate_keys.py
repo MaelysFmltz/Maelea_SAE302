@@ -1,6 +1,9 @@
 import random
+import os
 
 ROUTER_NAME = input("Nom du routeur (ex: R1): ")
+
+os.makedirs("../keys", exist_ok=True)
 
 def is_prime(n):
     if n < 2:
@@ -16,14 +19,10 @@ def gen_prime():
         if is_prime(p):
             return p
 
-while True:
-    p = gen_prime()
-    q = gen_prime()
-    if p != q:
-        break
-
+p = gen_prime()
+q = gen_prime()
 n = p * q
-phi = (p - 1) * (q - 1)
+phi = (p-1)*(q-1)
 
 e = 3
 while phi % e == 0:
@@ -31,16 +30,12 @@ while phi % e == 0:
 
 def inv(a, m):
     for x in range(1, m):
-        if (a * x) % m == 1:
+        if (a*x) % m == 1:
             return x
-    return None
 
 d = inv(e, phi)
-if d is None:
-    print("Erreur génération clé, recommence")
-    exit(1)
 
-open(f"../keys/{ROUTER_NAME}.public", "w").write(f"{e},{n}")
-open(f"../keys/{ROUTER_NAME}.private", "w").write(f"{d},{n}")
+open(f"../keys/{ROUTER_NAME}.public","w").write(f"{e},{n}")
+open(f"../keys/{ROUTER_NAME}.private","w").write(f"{d},{n}")
 
-print(f"[{ROUTER_NAME}] Clés RSA générées correctement")
+print(f"[{ROUTER_NAME}] Clés générées")
