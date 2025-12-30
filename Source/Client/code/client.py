@@ -12,12 +12,21 @@ MY_PORT = int(input("Port du client : "))
 MASTER_IP = input("IP du master : ")
 MASTER_PORT = int(input("Port du master : "))
 
+with open("../keys/public.key") as f:
+    CLIENT_PUBKEY = f.read().strip()
+
+with open("../keys/session.key", "rb") as f:
+    SESSION_KEY = f.read()
+
 def rsa_encrypt(text, pubkey):
     e, n = pubkey
     return ";".join(str(pow(ord(c), e, n)) for c in text)
 
+def xor(data, key):
+    return bytes(data[i] ^ key[i % len(key)] for i in range(len(data)))
+
 def register_client():
-    msg = f"CLIENT {CLIENT_NAME} {MY_PORT}\n"
+    msg = f"CLIENT {CLIENT_NAME} {MY_PORT} {CLIENT_PUBKEY}\n"
     s = socket.socket()
     s.connect((MASTER_IP, MASTER_PORT))
     s.sendall(msg.encode())
@@ -29,10 +38,10 @@ def ask_master(cmd):
     s.sendall(cmd)
     data = b""
     while True:
-        p = s.recv(4096)
-        if not p:
+        part = s.recv(4096)
+        if not part:
             break
-        data += p
+        data += part
     s.close()
     return data.decode()
 
@@ -62,29 +71,37 @@ def get_routeurs():
 
 def build_onion(message, path, dest_ip, dest_port):
     payload = f"FINAL {dest_ip} {dest_port}\n{message}"
+    payload = xor(payload.encode(), SESSION_KEY)
+    payload = SESSION_KEY.hex() + "\n" + payload.hex()
+
     for r in reversed(path):
         payload = f"NEXT {r['ip']} {r['port']}\n{payload}"
         payload = rsa_encrypt(payload, r["pubkey"])
+
     return payload
 
 def send_to_router(payload, router, log):
-    s = socket.socket()
-    s.connect((router["ip"], router["port"]))
-    s.sendall(payload.encode())
-    s.close()
-    log("Message envoyé")
+    try:
+        s = socket.socket()
+        s.connect((router["ip"], router["port"]))
+        s.sendall(payload.encode())
+        s.close()
+        log("Message envoyé")
+    except Exception as e:
+        log(f"Erreur : {e}")
 
 def listen_messages(log):
-    s = socket.socket()
-    s.bind(("0.0.0.0", MY_PORT))
-    s.listen(5)
+    server = socket.socket()
+    server.bind(("0.0.0.0", MY_PORT))
+    server.listen(5)
     log("Client en écoute")
+
     while True:
-        c, _ = s.accept()
-        data = c.recv(4096)
+        conn, _ = server.accept()
+        data = conn.recv(4096)
         if data:
             log("Message reçu : " + data.decode(errors="ignore"))
-        c.close()
+        conn.close()
 
 class ClientUI(QWidget):
     def __init__(self):
@@ -176,9 +193,14 @@ class ClientUI(QWidget):
             daemon=True
         ).start()
 
-register_client()
-app = QApplication([])
-window = ClientUI()
-window.show()
-threading.Thread(target=listen_messages, args=(window.log,), daemon=True).start()
-app.exec_()
+if __name__ == "__main__":
+    register_client()
+    app = QApplication([])
+    window = ClientUI()
+    window.show()
+    threading.Thread(
+        target=listen_messages,
+        args=(window.log,),
+        daemon=True
+    ).start()
+    app.exec_()
