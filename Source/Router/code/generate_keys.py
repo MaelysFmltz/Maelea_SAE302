@@ -1,20 +1,32 @@
 import random
+from sympy import isprime
 
-KEY_PATH = "../keys/"
+def gen_prime():
+    while True:
+        p = random.randint(100, 300)
+        if isprime(p):
+            return p
 
-def generate_key():
-    key = bytearray()
-    for _ in range(32):
-        key.append(random.randint(0, 255))
-    return bytes(key)
+p = gen_prime()
+q = gen_prime()
+n = p * q
+phi = (p - 1) * (q - 1)
 
-private_key = generate_key()
-public_key = bytes([b ^ 0xAA for b in private_key])
+e = 3
+while phi % e == 0:
+    e += 2
 
-with open(KEY_PATH + "private.key", "wb") as f:
-    f.write(private_key)
+def modinv(a, m):
+    for x in range(1, m):
+        if (a * x) % m == 1:
+            return x
 
-with open(KEY_PATH + "public.key", "wb") as f:
-    f.write(public_key)
+d = modinv(e, phi)
 
-print("[ROUTEUR] Clés générées")
+with open("../keys/public.key", "w") as f:
+    f.write(f"{e},{n}")
+
+with open("../keys/private.key", "w") as f:
+    f.write(f"{d},{n}")
+
+print("[ROUTEUR] Clés RSA générées")
