@@ -1,22 +1,14 @@
 import random
-
-def is_prime(n):
-    if n < 2:
-        return False
-    for i in range(2, int(n**0.5)+1):
-        if n % i == 0:
-            return False
-    return True
+from sympy import isprime
 
 def gen_prime():
     while True:
         p = random.randint(100, 300)
-        if is_prime(p):
+        if isprime(p):
             return p
 
 p = gen_prime()
 q = gen_prime()
-
 n = p * q
 phi = (p - 1) * (q - 1)
 
@@ -34,4 +26,4 @@ d = inv(e, phi)
 open("../keys/public.key", "w").write(f"{e},{n}")
 open("../keys/private.key", "w").write(f"{d},{n}")
 
-print("[ROUTEUR] Clés RSA générées")
+print("[ROUTER] Clés RSA générées")
