@@ -1,10 +1,17 @@
 import random
-from sympy import isprime
+
+def is_prime(n):
+    if n < 2:
+        return False
+    for i in range(2, int(n ** 0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
 
 def gen_prime():
     while True:
         p = random.randint(100, 300)
-        if isprime(p):
+        if is_prime(p):
             return p
 
 p = gen_prime()
@@ -23,5 +30,11 @@ def modinv(a, m):
 
 d = modinv(e, phi)
 
-open("../keys/public.key", "w").write(f"{e},{n}")
-open("../keys/private.key", "w").write(f"{d},{n}")
+with open("../keys/public.key", "w") as f:
+    f.write(f"{e},{n}")
+
+with open("../keys/private.key", "w") as f:
+    f.write(f"{d},{n}")
+
+print("[ROUTEUR] Clés RSA générées")
+
