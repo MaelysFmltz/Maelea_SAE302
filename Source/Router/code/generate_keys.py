@@ -23,10 +23,5 @@ def modinv(a, m):
 
 d = modinv(e, phi)
 
-with open("../keys/public.key", "w") as f:
-    f.write(f"{e},{n}")
-
-with open("../keys/private.key", "w") as f:
-    f.write(f"{d},{n}")
-
-print("[ROUTEUR] Clés RSA générées")
+open("../keys/public.key", "w").write(f"{e},{n}")
+open("../keys/private.key", "w").write(f"{d},{n}")
