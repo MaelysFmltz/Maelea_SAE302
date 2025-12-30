@@ -1,6 +1,6 @@
 import random
 
-ROUTER_NAME = input("Nom du routeur (ex: R1) : ")
+ROUTER_NAME = input("Nom du routeur (ex: R1): ")
 
 def is_prime(n):
     if n < 2:
@@ -16,8 +16,12 @@ def gen_prime():
         if is_prime(p):
             return p
 
-p = gen_prime()
-q = gen_prime()
+while True:
+    p = gen_prime()
+    q = gen_prime()
+    if p != q:
+        break
+
 n = p * q
 phi = (p - 1) * (q - 1)
 
@@ -29,10 +33,14 @@ def inv(a, m):
     for x in range(1, m):
         if (a * x) % m == 1:
             return x
+    return None
 
 d = inv(e, phi)
+if d is None:
+    print("Erreur génération clé, recommence")
+    exit(1)
 
 open(f"../keys/{ROUTER_NAME}.public", "w").write(f"{e},{n}")
 open(f"../keys/{ROUTER_NAME}.private", "w").write(f"{d},{n}")
 
-print(f"[{ROUTER_NAME}] Clés RSA générées")
+print(f"[{ROUTER_NAME}] Clés RSA générées correctement")
