@@ -1,14 +1,9 @@
 import random
 
-KEY_PATH = "../keys/"
-def gen_key():
-    return bytes(random.randint(0, 255) for _ in range(32))
+def gen():
+    return random.randint(100, 300)
 
-priv = gen_key()
-pub = bytes([b ^ 0xAA for b in priv])
+e = 3
+n = gen() * gen()
 
-open(KEY_PATH + "private.key", "wb").write(priv)
-open(KEY_PATH + "public.key", "wb").write(pub)
-
-print("[CLIENT] Clés générées")
-
+open("../keys/public.key", "w").write(f"{e},{n}")
