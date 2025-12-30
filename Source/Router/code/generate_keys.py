@@ -3,7 +3,7 @@ import random
 def is_prime(n):
     if n < 2:
         return False
-    for i in range(2, int(n ** 0.5) + 1):
+    for i in range(2, int(n**0.5)+1):
         if n % i == 0:
             return False
     return True
@@ -17,24 +17,20 @@ def gen_prime():
 p = gen_prime()
 q = gen_prime()
 n = p * q
-phi = (p - 1) * (q - 1)
+phi = (p-1)*(q-1)
 
 e = 3
 while phi % e == 0:
     e += 2
 
-def modinv(a, m):
+def inv(a, m):
     for x in range(1, m):
-        if (a * x) % m == 1:
+        if (a*x) % m == 1:
             return x
 
-d = modinv(e, phi)
+d = inv(e, phi)
 
-with open("../keys/public.key", "w") as f:
-    f.write(f"{e},{n}")
+open("../keys/public.key","w").write(f"{e},{n}")
+open("../keys/private.key","w").write(f"{d},{n}")
 
-with open("../keys/private.key", "w") as f:
-    f.write(f"{d},{n}")
-
-print("[ROUTEUR] Clés RSA générées")
-
+print("[ROUTER] Clés générées")
