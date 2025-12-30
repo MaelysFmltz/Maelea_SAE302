@@ -4,7 +4,7 @@ import threading
 ROUTER_NAME = input("Nom du routeur : ")
 LISTEN_PORT = int(input("Port d'écoute : "))
 
-with open("../keys/private.key") as f:
+with open(f"../keys/{ROUTER_NAME}.private") as f:
     d, n = map(int, f.read().split(","))
 
 def rsa_decrypt(data):
