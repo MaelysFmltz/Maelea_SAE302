@@ -7,7 +7,7 @@ ROUTER_PORT = input("Port d'écoute du routeur : ")
 MASTER_IP = input("IP du master : ")
 MASTER_PORT = int(input("Port du master : "))
 
-with open(f"..keys/{ROUTER_NAME}.public") as f:
+with open(f"../keys/{ROUTER_NAME}.public") as f:
     pubkey = f.read().strip()
 
 msg = (
