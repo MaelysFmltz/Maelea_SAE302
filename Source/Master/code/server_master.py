@@ -8,7 +8,7 @@ DB_USER = input("DB user : ")
 DB_PASS = input("DB pass : ")
 DB_NAME = input("DB name : ")
 
-def connect():
+def connect_db():
     return mariadb.connect(
         host=DB_HOST,
         user=DB_USER,
