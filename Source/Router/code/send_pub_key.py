@@ -1,8 +1,8 @@
 import socket
 
-ROUTER_NAME = input("Nom du routeur : ")
+ROUTER_NAME = input("Nom du routeur (ex: R1) : ")
 ROUTER_IP = input("IP du routeur : ")
-ROUTER_PORT = input("Port d'écoute : ")
+ROUTER_PORT = input("Port d'écoute du routeur : ")
 
 MASTER_IP = input("IP du master : ")
 MASTER_PORT = int(input("Port du master : "))
