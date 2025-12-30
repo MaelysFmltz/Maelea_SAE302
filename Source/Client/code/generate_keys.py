@@ -1,6 +1,14 @@
 import random
 
-key = bytes(random.randint(0,255) for _ in range(16))
-open("../keys/session.key","wb").write(key)
+e = 3
+n = random.randint(1000, 3000)
 
-print("[CLIENT] Clé de session générée")
+with open("../keys/public.key", "w") as f:
+    f.write(f"{e},{n}")
+
+print("[CLIENT] Clé publique générée")
+
+
+
+
+
