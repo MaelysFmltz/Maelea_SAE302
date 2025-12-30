@@ -1,6 +1,5 @@
 import socket
 import threading
-import time
 import mariadb
 
 LISTEN_PORT = int(input("Port d'écoute du Master : "))
@@ -8,13 +7,6 @@ DB_HOST = input("DB host : ")
 DB_USER = input("DB user : ")
 DB_PASS = input("DB password : ")
 DB_NAME = input("DB name : ")
-
-LOG_FILE = "../logs/master.log"
-
-def log(msg):
-    ts = time.strftime("%Y-%m-%d %H:%M:%S")
-    with open(LOG_FILE, "a") as f:
-        f.write(f"[{ts}] {msg}\n")
 
 def connect_db():
     return mariadb.connect(
@@ -25,33 +17,33 @@ def connect_db():
     )
 
 def save_router(name, ip, port, pubkey):
-    conn = connect_db()
-    cur = conn.cursor()
+    c = connect_db()
+    cur = c.cursor()
     cur.execute(
         "INSERT INTO routeurs (router_name, ip, port, public_key) VALUES (?, ?, ?, ?) "
         "ON DUPLICATE KEY UPDATE ip=?, port=?, public_key=?",
         (name, ip, port, pubkey, ip, port, pubkey)
     )
-    conn.commit()
-    conn.close()
+    c.commit()
+    c.close()
 
-def save_client(name, ip, port, pubkey):
-    conn = connect_db()
-    cur = conn.cursor()
+def save_client(name, ip, port):
+    c = connect_db()
+    cur = c.cursor()
     cur.execute(
-        "INSERT INTO clients (client_name, ip, port, public_key) VALUES (?, ?, ?, ?) "
-        "ON DUPLICATE KEY UPDATE ip=?, port=?, public_key=?",
-        (name, ip, port, pubkey, ip, port, pubkey)
+        "INSERT INTO clients (client_name, ip, port) VALUES (?, ?, ?) "
+        "ON DUPLICATE KEY UPDATE ip=?, port=?",
+        (name, ip, port, ip, port)
     )
-    conn.commit()
-    conn.close()
+    c.commit()
+    c.close()
 
 def list_routeurs():
-    conn = connect_db()
-    cur = conn.cursor()
+    c = connect_db()
+    cur = c.cursor()
     cur.execute("SELECT router_name, ip, port, public_key FROM routeurs")
     rows = cur.fetchall()
-    conn.close()
+    c.close()
     out = []
     for r in rows:
         out.append(f"ROUTEUR {r[0]} {r[1]} {r[2]} {r[3]}")
@@ -59,18 +51,18 @@ def list_routeurs():
     return "\n".join(out)
 
 def list_clients():
-    conn = connect_db()
-    cur = conn.cursor()
-    cur.execute("SELECT client_name, ip, port, public_key FROM clients")
+    c = connect_db()
+    cur = c.cursor()
+    cur.execute("SELECT client_name, ip, port FROM clients")
     rows = cur.fetchall()
-    conn.close()
+    c.close()
     out = []
-    for c in rows:
-        out.append(f"CLIENT {c[0]} {c[1]} {c[2]} {c[3]}")
+    for cl in rows:
+        out.append(f"CLIENT {cl[0]} {cl[1]} {cl[2]}")
     out.append("END")
     return "\n".join(out)
 
-def handle_client(conn, addr):
+def handle(conn, addr):
     data = conn.recv(65536).decode().strip()
 
     if data.startswith("ROUTEUR"):
@@ -94,8 +86,8 @@ def handle_client(conn, addr):
         conn.sendall(b"OK")
 
     elif data.startswith("CLIENT ") and not data.startswith("CLIENT GET"):
-        parts = data.split(" ", 3)
-        save_client(parts[1], addr[0], int(parts[2]), parts[3])
+        parts = data.split()
+        save_client(parts[1], addr[0], int(parts[2]))
         conn.sendall(b"OK")
 
     elif data == "CLIENT GET_CLIENTS":
@@ -106,13 +98,11 @@ def handle_client(conn, addr):
 
     conn.close()
 
-def start_master():
-    s = socket.socket()
-    s.bind(("0.0.0.0", LISTEN_PORT))
-    s.listen(5)
-    print(f"[MASTER] En écoute sur {LISTEN_PORT}")
-    while True:
-        c, a = s.accept()
-        threading.Thread(target=handle_client, args=(c, a), daemon=True).start()
+s = socket.socket()
+s.bind(("0.0.0.0", LISTEN_PORT))
+s.listen(5)
+print("[MASTER] En écoute")
 
-start_master()
+while True:
+    c, a = s.accept()
+    threading.Thread(target=handle, args=(c, a), daemon=True).start()
