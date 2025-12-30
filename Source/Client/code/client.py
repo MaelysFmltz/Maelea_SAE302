@@ -12,7 +12,7 @@ MY_PORT = int(input("Port du client : "))
 MASTER_IP = input("IP du master : ")
 MASTER_PORT = int(input("Port du master : "))
 
-with open("../keys/public.key", "r") as f:
+with open("../keys/{CLIENT_NAME}.public", "r") as f:
     CLIENT_PUBKEY = f.read().strip()
 
 def register_client():
