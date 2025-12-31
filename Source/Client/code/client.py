@@ -7,7 +7,6 @@ from PyQt5.QtWidgets import (
     QLabel, QSpinBox
 )
 
-
 CLIENT_NAME = input("Nom du client : ")
 MY_PORT = int(input("Port du client : "))
 MASTER_IP = input("IP du master : ")
@@ -15,7 +14,6 @@ MASTER_PORT = int(input("Port du master : "))
 
 with open(f"../keys/{CLIENT_NAME}.public", "r") as f:
     CLIENT_PUBKEY = f.read().strip()
-
 
 def rsa_encrypt(text, pubkey):
     e, n = pubkey
@@ -180,4 +178,31 @@ class ClientUI(QWidget):
         path = random.sample(routers, nb)
 
         dest_name = item.text().split(" ")[0]
-        dest = next(c for c in get_clients() if c["name"] == dest_name
+        dest = next(c for c in get_clients() if c["name"] == dest_name)
+
+        self.route_label.setText(
+            "Chemin : " + " → ".join(r["name"] for r in path)
+        )
+
+        payload = build_onion(message, path, dest["ip"], dest["port"])
+
+        threading.Thread(
+            target=send_to_router,
+            args=(payload, path[0], self.log),
+            daemon=True
+        ).start()
+
+if __name__ == "__main__":
+    register_client()
+
+    app = QApplication([])
+    window = ClientUI()
+    window.show()
+
+    threading.Thread(
+        target=listen_messages,
+        args=(window.log,),
+        daemon=True
+    ).start()
+
+    app.exec_()
