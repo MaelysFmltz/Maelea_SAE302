@@ -55,7 +55,7 @@ def handle(conn, addr):
 s = socket.socket()
 s.bind(("0.0.0.0", PORT))
 s.listen(5)
-print("[MASTER] OK")
+print("[MASTER] En écoute sur le port {PORT}")
 
 while True:
     c, a = s.accept()
