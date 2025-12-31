@@ -95,11 +95,11 @@ class ClientUI(QWidget):
         dest=item.text().split()[0]
         dest=next(c for c in get_clients() if c["name"]==dest)
 
-        payload=f"FINAL {dest['ip']} {dest['port']}\n"+self.msg.toPlainText()
+        payload = f"FINAL {dest['ip']} {dest['port']}\n" + self.msg.toPlainText()
 
         for r in reversed(path):
-            payload=f"NEXT {r['ip']} {r['port']}\n"+payload
-            payload=rsa_encrypt(payload, r["pub"])
+            payload = rsa_encrypt(payload, r["pub"])
+            payload = f"NEXT {r['ip']} {r['port']}\n" + payload
 
         s=socket.socket()
         s.connect((path[0]["ip"], path[0]["port"]))
