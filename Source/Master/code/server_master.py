@@ -25,6 +25,8 @@ def handle(conn, addr):
             "REPLACE INTO routeurs (router_name, ip, port, public_key) VALUES (?,?,?,?)",
             (name, ip, port, pubkey)
         )
+        print(f"[MASTER] Routeur enregistré : {name} {ip}:{port}")
+
         dbconn.commit()
         conn.sendall(b"OK")
 
