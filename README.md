@@ -3,7 +3,7 @@ SAE 3.02 / R3.09 : Conception d’une architecture distribuée avec routage en o
 1. Présentation du projet
 
 Ce projet a été réalisé dans le cadre de la SAE 3.02 du BUT Réseaux & Télécommunications.
-Il consiste à concevoir une architecture distribuée permettant l’échange de messages anonymisés entre clients, en s’inspirant du principe du routage en oignon.
+Il a pour objectif de concevoir une architecture distribuée permettant l’échange de messages anonymisés entre clients, en s’inspirant du principe du routage en oignon (Onion Routing) utilisé notamment par le réseau TOR.
 	
 L’architecture repose sur trois types d’entités :
 
@@ -11,7 +11,8 @@ L’architecture repose sur trois types d’entités :
 	- plusieurs Routeurs
 	- plusieurs Clients avec interface graphique
 
-Le système permet à un client d’envoyer un message à un autre client en passant par plusieurs routeurs choisis aléatoirement, chaque routeur ne connaissant que l’étape suivante.
+Le système permet à un client d’envoyer un message à un autre client en passant par plusieurs routeurs choisis aléatoirement.
+Chaque routeur ne connaît que l’étape suivante, et n’a aucune information sur l’origine ou la destination finale du message.
 
 2. Architecture générale : Rôles des composants
 
@@ -22,11 +23,15 @@ Master
 - Stocke les clés publiques dans une base MariaDB
 - Fournit la liste des clients et routeurs aux clients
 
+Le Master ne participe jamais au transit des messages.
+
 Routeur
 
 - Possède une paire de clés (publique / privée)
 - Déchiffre une couche du message
 - Transmet le message au prochain nœud
+
+Un routeur ne connaît jamais l’expéditeur ni le destinataire final.
 
 Client
 
@@ -35,6 +40,8 @@ Client
 - Récupère la topologie (clients et routeurs)
 - Construit le message en oignon de sorte a les securiser
 - Envoie le message sans bloquer l’interface
+
+Le client est responsable de tout le chiffrement initial.
 
 3. Librairies utilisées
 
@@ -94,7 +101,7 @@ Limites :
 7. Installation et utilisation du projet (pas à pas)
 
 Cette section décrit l’installation complète et l’utilisation du projet, dans l’ordre logique de fonctionnement du système.
-Il suffit de suivre les étapes dans l’ordre, sans connaissances particulières. Les VMs devront être sur le même réseau en Réseau privé hôte.
+Il suffit de suivre les étapes dans l’ordre, sans connaissances particulières. Les VMs devront être sur le même réseau en Réseau privé hôte avec un NAT.
 
 7.1 Récupération du projet depuis GitHub
 
@@ -112,7 +119,7 @@ ou si problème :
 
 Cloner le projet :
 
-	git clone https://github.com/MaelysFmltz/Maelea_SAE302.git
+	git clone https://github.com/votrenom/Maelea_SAE302.git
 	cd Maelea_SAE302
 	git checkout -b master origin/master
 	
@@ -217,16 +224,14 @@ Lancer le Master :
 Saisir :
 
 	Port d’écoute : 5000
-	DB host : localhost
-	DB user : maelea
-	DB password : sae302
-	DB name : sae302
 	
 Message attendu :
 
-	[MASTER] En écoute sur le port 5000
+	[MASTER] En écoute sur le port 
 
-	
+Création du fichier logs :
+
+	mkdir logs
 
 PARTIE 2 — ROUTEURS
 
@@ -244,7 +249,7 @@ Installation des outils :
 
 Cloner le projet :
 
-	git clone https://github.com/MaelysFmltz/Maelea_SAE302.git
+	git clone https://github.com/votrenom/Maelea_SAE302.git
 	cd Maelea_SAE302
 	git checkout -b master origin/master
 	
@@ -380,7 +385,7 @@ Se placer dans le dossier Documents :
 
 Cloner le projet :
 
-	git clone https://github.com/MaelysFmltz/Maelea_SAE302.git
+	git clone https://github.com/votrenom/Maelea_SAE302.git
 	cd Maelea_SAE302
 	git checkout -b master origin/master
 
