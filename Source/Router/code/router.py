@@ -6,41 +6,40 @@ LISTEN_PORT = int(input("Port d'écoute : "))
 with open(f"../keys/{ROUTER_NAME}.private") as f:
     d, n = map(int, f.read().split(","))
 
-def rsa_decrypt(data):
-    out = []
-    for x in data.split(";"):
-        if not x:
-            continue
-        out.append(chr(pow(int(x), d, n)))
-    return "".join(out)
+def rsa_decrypt_bytes(data):
+    out = bytearray()
+    for x in data.decode().split(";"):
+        if x:
+            out.append(pow(int(x), d, n))
+    return bytes(out)
 
 def handle(conn):
-    try:
-        enc = conn.recv(65536).decode()
-    except:
+    data = conn.recv(65536)
+    if not data:
         conn.close()
         return
 
     try:
-        text = rsa_decrypt(enc)
+        decrypted = rsa_decrypt_bytes(data)
     except:
         print(f"[{ROUTER_NAME}] Mauvaise couche (pas pour moi)")
         conn.close()
         return
 
-    if "\n" not in text:
+    if b"\n" not in decrypted:
         print(f"[{ROUTER_NAME}] En-tête invalide")
         conn.close()
         return
 
-    header, rest = text.split("\n", 1)
+    header, payload = decrypted.split(b"\n", 1)
+    header = header.decode()
 
     if header.startswith("NEXT"):
         _, ip, port = header.split()
         print(f"[{ROUTER_NAME}] → NEXT {ip}:{port}")
         s = socket.socket()
         s.connect((ip, int(port)))
-        s.sendall(rest.encode())  
+        s.sendall(payload)  
         s.close()
 
     elif header.startswith("FINAL"):
@@ -48,11 +47,8 @@ def handle(conn):
         print(f"[{ROUTER_NAME}] → FINAL {ip}:{port}")
         s = socket.socket()
         s.connect((ip, int(port)))
-        s.sendall(rest.encode())
+        s.sendall(payload)
         s.close()
-
-    else:
-        print(f"[{ROUTER_NAME}] En-tête inconnu")
 
     conn.close()
 
