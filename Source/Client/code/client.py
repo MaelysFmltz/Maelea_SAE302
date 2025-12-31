@@ -90,20 +90,16 @@ class ClientUI(QWidget):
             return
     
         routers = get_routeurs()
-        if len(routers) < self.spin.value():
-            self.log.append("Pas assez de routeurs")
-            return
-    
         path = random.sample(routers, self.spin.value())
         self.path.setText("Chemin : " + " → ".join(r["name"] for r in path))
     
         dest_name = item.text().split()[0]
         dest = next(c for c in get_clients() if c["name"] == dest_name)
     
-        payload = f"FINAL {dest['ip']} {dest['port']}\n{self.msg.toPlainText()}"
+        payload = f"FINAL {dest['ip']} {dest['port']}\n" + self.msg.toPlainText()
     
-        for r in path[::-1]:
-            payload = f"NEXT {r['ip']} {r['port']}\n{payload}"
+        for r in reversed(path):
+            payload = f"NEXT {r['ip']} {r['port']}\n" + payload
             payload = rsa_encrypt(payload, r["pub"])
     
         s = socket.socket()
@@ -112,6 +108,7 @@ class ClientUI(QWidget):
         s.close()
     
         self.log.append("Message envoyé")
+
 
 
 def listen():
