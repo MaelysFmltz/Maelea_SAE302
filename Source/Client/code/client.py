@@ -22,13 +22,6 @@ def rsa_encrypt(text, pubkey):
     return ";".join(str(pow(ord(c), e, n)) for c in text)
 
 
-def register_client():
-    msg = f"CLIENT {CLIENT_NAME} {MY_PORT} {CLIENT_PUBKEY}"
-    s = socket.socket()
-    s.connect((MASTER_IP, MASTER_PORT))
-    s.sendall(msg.encode())
-    s.close()
-
 def ask_master(cmd):
     s = socket.socket()
     s.connect((MASTER_IP, MASTER_PORT))
@@ -42,58 +35,52 @@ def ask_master(cmd):
     s.close()
     return data.decode()
 
+def register_client():
+    msg = f"CLIENT {CLIENT_NAME} {MY_PORT} {CLIENT_PUBKEY}\n"
+    s = socket.socket()
+    s.connect((MASTER_IP, MASTER_PORT))
+    s.sendall(msg.encode())
+    s.close()
+    print("[CLIENT] Enregistré auprès du Master")
+
 def get_clients():
     res = []
-    data = ask_master(b"CLIENT GET_CLIENTS")
-
-    for line in data.splitlines():
+    for line in ask_master(b"CLIENT GET_CLIENTS").splitlines():
         if line == "END":
             break
-
-        p = line.split()
-        if len(p) != 4:
+        parts = line.split()
+        if len(parts) != 4:
             continue
-
         res.append({
-            "name": p[1],
-            "ip": p[2],
-            "port": int(p[3])
+            "name": parts[1],
+            "ip": parts[2],
+            "port": int(parts[3])
         })
-
     return res
 
 def get_routeurs():
     res = []
-    data = ask_master(b"CLIENT GET_ROUTEURS")
-
-    for line in data.splitlines():
+    for line in ask_master(b"CLIENT GET_ROUTEURS").splitlines():
         if line == "END":
             break
-
-        p = line.split()
-        if len(p) != 5:
+        parts = line.split()
+        if len(parts) != 5:
             continue
-
-        e, n = map(int, p[4].split(","))
-
+        e, n = map(int, parts[4].split(","))
         res.append({
-            "name": p[1],
-            "ip": p[2],
-            "port": int(p[3]),
+            "name": parts[1],
+            "ip": parts[2],
+            "port": int(parts[3]),
             "pubkey": (e, n)
         })
-
     return res
 
 def build_onion(message, path, dest_ip, dest_port):
     payload = f"FINAL {dest_ip} {dest_port}\n{message}"
-
     for r in reversed(path):
-        payload = f"NEXT {r['ip']} {r['port']}\n" + payload
+        payload = f"NEXT {r['ip']} {r['port']}\n{payload}"
         payload = rsa_encrypt(payload, r["pubkey"])
-
     return payload
-
 
 def send_to_router(payload, router, log):
     try:
@@ -110,7 +97,6 @@ def listen_messages(log):
     server.bind(("0.0.0.0", MY_PORT))
     server.listen(5)
     log("Client en écoute")
-
     while True:
         conn, _ = server.accept()
         data = conn.recv(4096)
@@ -194,33 +180,4 @@ class ClientUI(QWidget):
         path = random.sample(routers, nb)
 
         dest_name = item.text().split(" ")[0]
-        dest = next(c for c in get_clients() if c["name"] == dest_name)
-
-        self.route_label.setText(
-            "Chemin : " + " → ".join(r["name"] for r in path)
-        )
-
-        payload = build_onion(message, path, dest["ip"], dest["port"])
-
-        threading.Thread(
-            target=send_to_router,
-            args=(payload, path[0], self.log),
-            daemon=True
-        ).start()
-
-
-
-if __name__ == "__main__":
-    register_client() 
-
-    app = QApplication([])
-    window = ClientUI()
-    window.show()
-
-    threading.Thread(
-        target=listen_messages,
-        args=(window.log,),
-        daemon=True
-    ).start()
-
-    app.exec_()
+        dest = next(c for c in get_clients() if c["name"] == dest_name
