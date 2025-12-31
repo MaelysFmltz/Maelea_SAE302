@@ -1,67 +1,75 @@
-import socket, threading
+import socket, threading, time, os
 
 ROUTER_NAME = input("Nom du routeur : ")
-LISTEN_PORT = int(input("Port d'écoute : "))
+PORT = int(input("Port d'écoute : "))
+
+os.makedirs("../logs", exist_ok=True)
+LOG_FILE = f"../logs/{ROUTER_NAME}.log"
+
+def log(msg):
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{ts}] {msg}"
+    print(line)
+    with open(LOG_FILE, "a") as f:
+        f.write(line + "\n")
 
 with open(f"../keys/{ROUTER_NAME}.private") as f:
-    d,n = map(int,f.read().split(","))
-
-session_key = None
+    d, n = map(int, f.read().split(","))
 
 def rsa_decrypt(data):
-    return bytes(pow(int(x),d,n) for x in data.split(";") if x)
+    return "".join(chr(pow(int(x), d, n)) for x in data.split(";") if x)
 
-def xor(data,key):
-    return bytes(data[i]^key[i%len(key)] for i in range(len(data)))
-
-def handle(c):
-    global session_key
-    raw = c.recv(65536)
-
-    if raw.startswith(b"KEY|"):
-        enc = raw[4:].decode()
-        session_key = rsa_decrypt(enc)
-        print(f"[{ROUTER_NAME}] Clé de session reçue")
-        c.close()
+def handle(conn):
+    try:
+        enc = conn.recv(65536).decode()
+    except:
+        log("Erreur réception données")
+        conn.close()
         return
 
-    if not session_key:
-        print(f"[{ROUTER_NAME}] Pas de clé")
-        c.close()
-        return
+    log(f"Données reçues ({len(enc)} octets)")
 
     try:
-        text = xor(raw,session_key).decode()
+        text = rsa_decrypt(enc)
     except:
-        print(f"[{ROUTER_NAME}] Mauvaise couche")
-        c.close()
+        log(“ Mauvaise couche (pas pour moi)")
+        conn.close()
         return
 
-    header,payload = text.split("\n",1)
+    if "\n" not in text:
+        log("En-tête invalide")
+        conn.close()
+        return
+
+    header, payload = text.split("\n", 1)
 
     if header.startswith("NEXT"):
-        _,ip,port = header.split()
-        print(f"[{ROUTER_NAME}] → NEXT {ip}:{port}")
-        s=socket.socket()
-        s.connect((ip,int(port)))
+        _, ip, port = header.split()
+        log(f"➡ NEXT vers {ip}:{port}")
+        s = socket.socket()
+        s.connect((ip, int(port)))
         s.sendall(payload.encode())
         s.close()
 
     elif header.startswith("FINAL"):
-        _,ip,port = header.split()
-        print(f"[{ROUTER_NAME}] → FINAL {ip}:{port}")
-        s=socket.socket()
-        s.connect((ip,int(port)))
+        _, ip, port = header.split()
+        log(f"🏁 FINAL vers {ip}:{port}")
+        s = socket.socket()
+        s.connect((ip, int(port)))
         s.sendall(payload.encode())
         s.close()
 
-    c.close()
+    else:
+        log(f"En-tête inconnu : {header}")
 
-s=socket.socket()
-s.bind(("0.0.0.0",LISTEN_PORT))
+    conn.close()
+
+s = socket.socket()
+s.bind(("0.0.0.0", PORT))
 s.listen(5)
-print(f"[{ROUTER_NAME}] En écoute")
+
+log(f"Routeur {ROUTER_NAME} en écoute sur le port {PORT}")
 
 while True:
-    c,_=s.accept()
-    threading.Thread(target=handle,args=(c,),daemon=True).start()
+    c, _ = s.accept()
+    threading.Thread(target=handle, args=(c,), daemon=True).start()
