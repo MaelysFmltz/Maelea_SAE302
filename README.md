@@ -102,6 +102,8 @@ Limites :
 
 Cette section décrit l’installation complète et l’utilisation du projet, dans l’ordre logique de fonctionnement du système.
 Il suffit de suivre les étapes dans l’ordre, sans connaissances particulières. Les VMs devront être sur le même réseau en Réseau privé hôte avec un NAT.
+7.Video 
+URL pour acceder a la video sur Canva : https://www.canva.com/design/DAG9E8_KNLo/Mzf2cxLYxT6oILzdJ4niUA/edit?utm_content=DAG9E8_KNLo&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
 
 7.1 Récupération du projet depuis GitHub
 
