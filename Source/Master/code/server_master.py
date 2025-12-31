@@ -1,13 +1,17 @@
-import socket, threading, mariadb
+import socket
+import threading
+import mariadb
 import time
 import os
 
 LOG_FILE = "../logs/master.log"
+os.makedirs("../logs", exist_ok=True)
 
 def log(msg):
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_FILE, "a") as f:
         f.write(f"[{ts}] {msg}\n")
+    print(msg)
 
 PORT = int(input("Port du master : "))
 
@@ -23,6 +27,7 @@ def handle(conn, addr):
     dbconn = db()
     cur = dbconn.cursor()
 
+    
     if data.startswith("ROUTEUR"):
         lines = data.split("\n")
         name = lines[0].split()[1]
@@ -31,22 +36,33 @@ def handle(conn, addr):
         pubkey = lines[4]
 
         cur.execute(
-            "REPLACE INTO routeurs (router_name, ip, port, public_key) VALUES (?,?,?,?)",
-            (name, ip, port, pubkey)
+            "INSERT INTO routeurs (router_name, ip, port, public_key) "
+            "VALUES (?, ?, ?, ?) "
+            "ON DUPLICATE KEY UPDATE ip=?, port=?, public_key=?",
+            (name, ip, port, pubkey, ip, port, pubkey)
         )
-        print(f"[MASTER] Routeur enregistré : {name} {ip}:{port}")
 
         dbconn.commit()
         conn.sendall(b"OK")
+        log(f"[MASTER] Routeur enregistré : {name} ({ip}:{port})")
+
 
     elif data.startswith("CLIENT ") and not data.startswith("CLIENT GET"):
         parts = data.split(" ", 3)
+        name = parts[1]
+        port = int(parts[2])
+        pubkey = parts[3]
+
         cur.execute(
-            "REPLACE INTO clients (client_name, ip, port, public_key) VALUES (?,?,?,?)",
-            (parts[1], addr[0], int(parts[2]), parts[3])
+            "INSERT INTO clients (client_name, ip, port, public_key) "
+            "VALUES (?, ?, ?, ?) "
+            "ON DUPLICATE KEY UPDATE ip=?, port=?, public_key=?",
+            (name, addr[0], port, pubkey, addr[0], port, pubkey)
         )
+
         dbconn.commit()
         conn.sendall(b"OK")
+        log(f"[MASTER] Client enregistré : {name} ({addr[0]}:{port})")
 
     elif data == "CLIENT GET_ROUTEURS":
         cur.execute("SELECT router_name, ip, port, public_key FROM routeurs")
@@ -63,10 +79,13 @@ def handle(conn, addr):
     conn.close()
     dbconn.close()
 
+
 s = socket.socket()
 s.bind(("0.0.0.0", PORT))
 s.listen(5)
-print("[MASTER] En écoute sur le port {PORT}")
+
+print(f"[MASTER] En écoute sur le port {PORT}")
+log("Master démarré")
 
 while True:
     c, a = s.accept()
