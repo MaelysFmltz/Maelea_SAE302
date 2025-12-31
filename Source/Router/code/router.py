@@ -33,14 +33,14 @@ def handle(conn):
         conn.close()
         return
 
-    header, payload = text.split("\n", 1)
+    header, rest = text.split("\n", 1)
 
     if header.startswith("NEXT"):
         _, ip, port = header.split()
         print(f"[{ROUTER_NAME}] → NEXT {ip}:{port}")
         s = socket.socket()
         s.connect((ip, int(port)))
-        s.sendall(payload.encode())
+        s.sendall(rest.encode())  
         s.close()
 
     elif header.startswith("FINAL"):
@@ -48,7 +48,7 @@ def handle(conn):
         print(f"[{ROUTER_NAME}] → FINAL {ip}:{port}")
         s = socket.socket()
         s.connect((ip, int(port)))
-        s.sendall(payload.encode())
+        s.sendall(rest.encode())
         s.close()
 
     else:
