@@ -1,12 +1,6 @@
-import random, os
+import os, random
 
-CLIENT_NAME = input("Nom du client : ")
 os.makedirs("../keys", exist_ok=True)
-
-p = random.randint(100,300)
-q = random.randint(100,300)
-n = p*q
-e = 3
-
-open(f"../keys/{CLIENT_NAME}.public","w").write(f"{e},{n}")
-print(f"[{CLIENT_NAME}] Clé générée")
+key = bytes(random.randint(0,255) for _ in range(32))
+open("../keys/session.key","wb").write(key)
+print("[CLIENT] Clé de session générée")
