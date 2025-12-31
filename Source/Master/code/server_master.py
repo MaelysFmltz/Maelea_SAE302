@@ -1,4 +1,13 @@
 import socket, threading, mariadb
+import time
+import os
+
+LOG_FILE = "../logs/master.log"
+
+def log(msg):
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    with open(LOG_FILE, "a") as f:
+        f.write(f"[{ts}] {msg}\n")
 
 PORT = int(input("Port du master : "))
 
